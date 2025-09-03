@@ -1,0 +1,134 @@
+{
+  "app": {
+    "title": "FCM Message Sender",
+    "description": "Send personalized push notifications through Firebase Cloud Messaging. Manage multiple projects, configure advanced messages and reach your users instantly.",
+    "features": {
+      "quickSend": "Quick Send",
+      "secure": "Secure",
+      "multiPlatform": "Multi-Platform"
+    },
+    "stats": {
+      "projectsConfigured": "Configured Projects",
+      "activeProject": "Active Project",
+      "status": "Status",
+      "ready": "Ready",
+      "configuring": "Configuring",
+      "none": "None"
+    },
+    "footer": "FCM Message Sender - Developer tool to test and send Firebase notifications"
+  },
+  "certificates": {
+    "title": "Firebase Certificates Management",
+    "description": "Add and manage your Firebase project certificates to send push notifications.",
+    "addNew": "Add New Certificate",
+    "selectProject": "Select Project",
+    "noProjects": "No projects available",
+    "paste": "Paste your JSON certificate here...",
+    "add": "Add Certificate",
+    "delete": "Delete",
+    "errors": {
+      "invalidJson": "Invalid JSON",
+      "missingProjectId": "Missing project_id in certificate",
+      "alreadyExists": "Certificate already exists for this project"
+    },
+    "success": {
+      "added": "Certificate added successfully",
+      "deleted": "Certificate deleted successfully"
+    }
+  },
+  "message": {
+    "title": "FCM Message Configuration",
+    "description": "Configure all the details of your Firebase Cloud Messaging message.",
+    "deviceToken": "Device Token",
+    "deviceTokenPlaceholder": "fGH1jK2lM3nO4pQ5rS6tU7vW8xY9zA0bC1dE2fG3hI4jK5lM6nO7pQ8rS9tU0vW1xY2zA3bC4dE5fG",
+    "tabs": {
+      "notification": "Notification",
+      "customData": "Custom Data",
+      "android": "Android",
+      "apns": "APNS (iOS)",
+      "webpush": "Web Push"
+    },
+    "notification": {
+      "title": "Title",
+      "body": "Message",
+      "image": "Image URL",
+      "icon": "Icon URL",
+      "clickAction": "Click Action",
+      "badge": "Badge URL"
+    },
+    "customData": {
+      "key": "Key",
+      "value": "Value",
+      "add": "Add Field",
+      "remove": "Remove"
+    },
+    "android": {
+      "sound": "Sound",
+      "color": "Color",
+      "tag": "Tag",
+      "priority": "Priority",
+      "priorities": {
+        "min": "Minimum",
+        "low": "Low",
+        "default": "Default",
+        "high": "High",
+        "max": "Maximum"
+      }
+    },
+    "apns": {
+      "sound": "Sound",
+      "badge": "Badge",
+      "category": "Category",
+      "threadId": "Thread ID",
+      "contentAvailable": "Content Available",
+      "mutableContent": "Mutable Content"
+    },
+    "webpush": {
+      "requireInteraction": "Require Interaction",
+      "vibrate": "Vibration (ms, comma separated)"
+    },
+    "send": "Send Message",
+    "jsonPreview": {
+      "sent": "Sent JSON",
+      "received": "Received JSON"
+    },
+    "errors": {
+      "noProject": "Select a project",
+      "noToken": "Enter device token",
+      "noTitle": "Enter notification title",
+      "noBody": "Enter notification message",
+      "certificateNotFound": "Certificate not found for selected project",
+      "sendError": "An error occurred while sending the message"
+    },
+    "success": {
+      "sent": "Message Sent",
+      "sentDescription": "Notification sent successfully to project {{project}}"
+    },
+    "tooltips": {
+      "deviceToken": "Unique token that identifies the recipient device",
+      "title": "Notification title that will appear in the system",
+      "body": "Main text of the notification message",
+      "image": "URL of the image to show in the notification (optional)",
+      "icon": "URL of the icon to show in the notification (optional)",
+      "clickAction": "Action to perform when user clicks the notification",
+      "badge": "URL of the badge image for iOS",
+      "androidSound": "Audio file name for Android notification sound",
+      "androidColor": "Notification color in hexadecimal format (#FFFFFF)",
+      "androidTag": "Tag to group notifications",
+      "androidPriority": "Android notification priority",
+      "apnsSound": "Audio file name for iOS",
+      "apnsBadge": "Number to show on app badge",
+      "apnsCategory": "iOS notification category",
+      "apnsThreadId": "ID to group notifications",
+      "apnsContentAvailable": "Wake up the app in background",
+      "apnsMutableContent": "Allow content modifications",
+      "webpushRequireInteraction": "Notification stays visible until user interacts",
+      "webpushVibrate": "Vibration pattern for supported devices"
+    }
+  },
+  "language": {
+    "switch": "Change Language",
+    "italian": "Italiano",
+    "english": "English"
+  }
+}

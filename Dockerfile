@@ -1,0 +1,42 @@
+# Stage 1: Build the application
+# Use a complete Node image for the build process
+FROM node:22-alpine AS build-stage
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package configuration files
+# This allows Docker to use the cache layer if these files haven't changed
+COPY package*.json ./
+
+# Install both development and production dependencies
+# This is necessary for the build step
+RUN npm install
+
+# Copy the rest of the source code
+COPY . .
+
+# Run the Vite production build
+# This command creates the 'dist' folder with optimized code
+RUN npm run build
+
+# Stage 2: Create the production image
+# Use a minimal base image for the final production container
+FROM node:22-alpine
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the build output ('dist' folder) from the first stage
+COPY --from=build-stage /app/dist ./dist
+
+# Expose the port on which the application will listen
+EXPOSE 80
+
+# Command to start a lightweight server to serve the static files
+# This is ideal for Single Page Applications (SPAs)
+RUN npm install -g serve
+CMD ["serve", "-s", "dist"]
+
+# If your app has a server (e.g., Express.js) in './dist/server.js'
+# CMD ["node", "dist/server.js"]

@@ -1,0 +1,134 @@
+{
+  "app": {
+    "title": "FCM Message Sender",
+    "description": "Invia notifiche push personalizzate attraverso Firebase Cloud Messaging. Gestisci multipli progetti, configura messaggi avanzati e raggiungi i tuoi utenti istantaneamente.",
+    "features": {
+      "quickSend": "Invio Rapido",
+      "secure": "Sicuro",
+      "multiPlatform": "Multi-Platform"
+    },
+    "stats": {
+      "projectsConfigured": "Progetti Configurati",
+      "activeProject": "Progetto Attivo", 
+      "status": "Stato",
+      "ready": "Pronto",
+      "configuring": "In Configurazione",
+      "none": "Nessuno"
+    },
+    "footer": "FCM Message Sender - Strumento per sviluppatori per testare e inviare notifiche Firebase"
+  },
+  "certificates": {
+    "title": "Gestione Certificati Firebase",
+    "description": "Aggiungi e gestisci i certificati dei tuoi progetti Firebase per inviare notifiche push.",
+    "addNew": "Aggiungi Nuovo Certificato",
+    "selectProject": "Seleziona Progetto",
+    "noProjects": "Nessun progetto disponibile",
+    "paste": "Incolla il certificato JSON qui...",
+    "add": "Aggiungi Certificato",
+    "delete": "Elimina",
+    "errors": {
+      "invalidJson": "JSON non valido",
+      "missingProjectId": "project_id mancante nel certificato",
+      "alreadyExists": "Certificato già esistente per questo progetto"
+    },
+    "success": {
+      "added": "Certificato aggiunto con successo",
+      "deleted": "Certificato eliminato con successo"
+    }
+  },
+  "message": {
+    "title": "Configurazione Messaggio FCM",
+    "description": "Configura tutti i dettagli del tuo messaggio Firebase Cloud Messaging.",
+    "deviceToken": "Device Token",
+    "deviceTokenPlaceholder": "fGH1jK2lM3nO4pQ5rS6tU7vW8xY9zA0bC1dE2fG3hI4jK5lM6nO7pQ8rS9tU0vW1xY2zA3bC4dE5fG",
+    "tabs": {
+      "notification": "Notifica",
+      "customData": "Dati Personalizzati", 
+      "android": "Android",
+      "apns": "APNS (iOS)",
+      "webpush": "Web Push"
+    },
+    "notification": {
+      "title": "Titolo",
+      "body": "Messaggio",
+      "image": "Immagine URL",
+      "icon": "Icona URL",
+      "clickAction": "Click Action",
+      "badge": "Badge URL"
+    },
+    "customData": {
+      "key": "Chiave",
+      "value": "Valore",
+      "add": "Aggiungi Campo",
+      "remove": "Rimuovi"
+    },
+    "android": {
+      "sound": "Suono",
+      "color": "Colore",
+      "tag": "Tag",
+      "priority": "Priorità",
+      "priorities": {
+        "min": "Minima",
+        "low": "Bassa", 
+        "default": "Default",
+        "high": "Alta",
+        "max": "Massima"
+      }
+    },
+    "apns": {
+      "sound": "Suono",
+      "badge": "Badge",
+      "category": "Categoria",
+      "threadId": "Thread ID",
+      "contentAvailable": "Content Available",
+      "mutableContent": "Mutable Content"
+    },
+    "webpush": {
+      "requireInteraction": "Richiedi Interazione",
+      "vibrate": "Vibrazione (ms, separati da virgola)"
+    },
+    "send": "Invia Messaggio",
+    "jsonPreview": {
+      "sent": "JSON Inviato",
+      "received": "JSON Ricevuto"
+    },
+    "errors": {
+      "noProject": "Seleziona un progetto",
+      "noToken": "Inserisci il device token",
+      "noTitle": "Inserisci il titolo della notifica",
+      "noBody": "Inserisci il messaggio della notifica",
+      "certificateNotFound": "Certificato non trovato per il progetto selezionato",
+      "sendError": "Si è verificato un errore durante l'invio del messaggio"
+    },
+    "success": {
+      "sent": "Messaggio Inviato",
+      "sentDescription": "Notifica inviata con successo al progetto {{project}}"
+    },
+    "tooltips": {
+      "deviceToken": "Token univoco che identifica il dispositivo destinatario",
+      "title": "Titolo della notifica che apparirà nel sistema",
+      "body": "Testo principale del messaggio di notifica",
+      "image": "URL dell'immagine da mostrare nella notifica (opzionale)",
+      "icon": "URL dell'icona da mostrare nella notifica (opzionale)",
+      "clickAction": "Azione da eseguire quando l'utente clicca la notifica",
+      "badge": "URL dell'immagine badge per iOS",
+      "androidSound": "Nome del file audio per il suono di notifica Android",
+      "androidColor": "Colore della notifica in formato esadecimale (#FFFFFF)",
+      "androidTag": "Tag per raggruppare le notifiche",
+      "androidPriority": "Priorità della notifica Android",
+      "apnsSound": "Nome del file audio per iOS",
+      "apnsBadge": "Numero da mostrare sul badge dell'app",
+      "apnsCategory": "Categoria della notifica iOS",
+      "apnsThreadId": "ID per raggruppare le notifiche",
+      "apnsContentAvailable": "Risveglia l'app in background",
+      "apnsMutableContent": "Permette modifiche al contenuto",
+      "webpushRequireInteraction": "La notifica rimane visibile finché l'utente non interagisce",
+      "webpushVibrate": "Pattern di vibrazione per dispositivi supportati"
+    }
+  },
+  "language": {
+    "switch": "Cambia Lingua",
+    "italian": "Italiano",
+    "english": "English"
+  }
+}

@@ -38,12 +38,12 @@
    docker-compose -f docker-compose.dev.yml up --build
 
    # Produzione
-   docker-compose up prod
+   docker-compose up --build
    ```
 
 3. **Accedi all'app**
-   - Sviluppo: [http://localhost:3000](http://localhost:3000)
-   - Produzione: [http://localhost:4173](http://localhost:4173)
+   - Sviluppo: [http://localhost:8080](http://localhost:8080)
+   - Produzione: [http://localhost:9090](http://localhost:9090)
 
 ### Sviluppo Locale
 

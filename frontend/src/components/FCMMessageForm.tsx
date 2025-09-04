@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 type TargetType = "token" | "topic";
 
 interface FCMMessage {
-  to?: string;
+  token?: string;
   topic?: string;
   notification: {
     title: string;
@@ -122,7 +122,7 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
     };
 
     if (targetType === 'token') {
-      message.to = formData.target;
+      message.token = formData.target;
     } else {
       message.topic = formData.target;
     }

@@ -3,6 +3,7 @@ import cors from 'cors';
 import admin from 'firebase-admin';
 import { readdir, writeFile, unlink } from 'fs/promises';
 import { resolve } from 'path';
+import fs from 'fs';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -19,23 +20,29 @@ const firebaseApps = new Map<string, admin.app.App>();
  * Initializes a Firebase app for a given project ID if not already initialized.
  * @param projectId The Firebase project ID.
  */
-async function initializeFirebaseApp(projectId: string) {
+export async function initializeFirebaseApp(projectId: string) {
   if (firebaseApps.has(projectId)) {
     return firebaseApps.get(projectId);
   }
 
   try {
     const certPath = resolve(CERTS_DIR, `${projectId}.json`);
-    const serviceAccount = await import(certPath, { assert: { type: 'json' } });
 
+    // Legge il certificato come JSON
+    if (!fs.existsSync(certPath)) {
+      throw new Error(`Certificate file not found: ${certPath}`);
+    }
+    const serviceAccount = JSON.parse(fs.readFileSync(certPath, 'utf-8'));
+
+    // Inizializza Firebase app
     const app = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount.default),
-    }, projectId); // Use projectId as the app name to avoid conflicts
+      credential: admin.credential.cert(serviceAccount),
+    }, projectId);
 
     firebaseApps.set(projectId, app);
     console.log(`Initialized Firebase app for project: ${projectId}`);
     return app;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to initialize Firebase app for project ${projectId}:`, error);
     throw new Error(`Certificate for project '${projectId}' not found or invalid.`);
   }
@@ -62,16 +69,20 @@ app.get('/api/projects', async (req, res) => {
  */
 app.post('/api/send', async (req, res) => {
   const { projectId, message } = req.body;
-
+ console.log(req.body);
   if (!projectId || !message) {
     return res.status(400).json({ error: 'projectId and message are required.' });
   }
-
   try {
     const firebaseApp = await initializeFirebaseApp(projectId);
     if (!firebaseApp) {
       throw new Error('Firebase app could not be initialized.');
     }
+    if (!message.token && !message.topic && !message.condition) {
+    return res.status(400).json({
+      error: "Message must contain exactly one of: token, topic, or condition"
+    });
+  }
 
     const response = await firebaseApp.messaging().send(message);
     console.log('Successfully sent message:', response);

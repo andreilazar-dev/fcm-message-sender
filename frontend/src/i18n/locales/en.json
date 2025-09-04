@@ -1,0 +1,163 @@
+{
+  "app": {
+    "title": "FCM Message Sender",
+    "description": "Send personalized push notifications through Firebase Cloud Messaging. Manage multiple projects, configure advanced messages and reach your users instantly.",
+    "features": {
+      "quickSend": "Quick Send",
+      "secure": "Secure",
+      "multiPlatform": "Multi-Platform"
+    },
+    "stats": {
+      "projectsConfigured": "Configured Projects",
+      "activeProject": "Active Project",
+      "status": "Status",
+      "ready": "Ready",
+      "configuring": "Configuring",
+      "none": "None"
+    },
+    "footer": "FCM Message Sender - Developer tool to test and send Firebase notifications",
+    "active": "Active",
+    "errors": {
+      "title": "Error",
+      "generic": "An unexpected error occurred.",
+      "fetchProjects": "Failed to fetch projects from backend."
+    }
+  },
+  "certificates": {
+    "title": "Firebase Certificates Management",
+    "tooltip": "Upload your Firebase service account JSON certificates to enable sending FCM notifications.",
+    "pasteJson": "Paste Certificate JSON",
+    "addBtn": "Add Certificate",
+    "uploaded": "Uploaded Certificates",
+    "errors": {
+      "invalid": "Invalid certificate: required fields are missing.",
+      "add": "Failed to add certificate.",
+      "delete": "Failed to delete certificate.",
+      "invalidJson": "Invalid JSON format."
+    },
+    "success": {
+      "added": "Certificate Added",
+      "addedDescription": "Successfully added certificate for project",
+      "deleted": "Certificate Deleted",
+      "deletedDescription": "Successfully deleted certificate for project"
+    }
+  },
+  "message": {
+    "title": "Compose Notification",
+    "description": "Create and send a push notification to a device or topic.",
+    "deviceToken": "Device Token",
+    "deviceTokenPlaceholder": "FCM registration token",
+    "topicName": "Topic Name",
+    "topicNamePlaceholder": "e.g., news",
+    "send": "Send Message",
+    "sending": "Sending...",
+    "target": {
+      "title": "Target",
+      "token": "Token",
+      "topic": "Topic"
+    },
+    "notification": {
+      "title": "Title",
+      "body": "Body",
+      "icon": "Icon URL",
+      "image": "Image URL",
+      "clickAction": "Click Action",
+      "badge": "Badge URL"
+    },
+    "customData": {
+      "add": "Add Custom Data",
+      "key": "Key",
+      "value": "Value"
+    },
+    "tabs": {
+      "notification": "Notification",
+      "customData": "Custom Data",
+      "android": "Android",
+      "apns": "APNs",
+      "webpush": "Web Push"
+    },
+    "android": {
+      "sound": "Sound",
+      "color": "Color",
+      "tag": "Tag",
+      "priority": "Priority",
+      "channelId": "Channel ID",
+      "ticker": "Ticker",
+      "notificationCount": "Notification Count",
+      "priorities": {
+        "min": "Min",
+        "low": "Low",
+        "default": "Default",
+        "high": "High",
+        "max": "Max"
+      }
+    },
+    "apns": {
+      "sound": "Sound",
+      "badge": "Badge",
+      "category": "Category",
+      "threadId": "Thread ID",
+      "contentAvailable": "Content Available",
+      "mutableContent": "Mutable Content",
+      "subtitle": "Subtitle",
+      "interruptionLevel": "Interruption Level",
+      "interruptionLevels": {
+        "passive": "Passive",
+        "active": "Active",
+        "time-sensitive": "Time-Sensitive"
+      }
+    },
+    "webpush": {
+      "requireInteraction": "Require Interaction",
+      "vibrate": "Vibrate Pattern"
+    },
+    "jsonPreview": {
+      "sent": "Sent JSON",
+      "received": "Received JSON"
+    },
+    "tooltips": {
+      "deviceToken": "The FCM registration token for the target device.",
+      "topic": "The name of the topic to send the message to.",
+      "title": "The notification's title.",
+      "body": "The notification's body text.",
+      "icon": "The URL of the icon to display.",
+      "image": "The URL of an image to display in the notification.",
+      "clickAction": "The action associated with a user click on the notification.",
+      "badge": "The URL of the badge to display.",
+      "androidSound": "The sound to play when the device receives the notification.",
+      "androidColor": "The notification's icon color, expressed in #rrggbb format.",
+      "androidTag": "Identifier used to replace existing notifications in the notification drawer.",
+      "androidPriority": "The priority of the notification.",
+      "androidChannelId": "The notification's channel id (new in Android O).",
+      "androidTicker": "The text to scroll across the screen when the notification arrives.",
+      "androidNotificationCount": "The number to display in a badge on the app icon.",
+      "apnsSound": "The sound to play when the device receives the notification.",
+      "apnsBadge": "The number to display in a badge on your app's icon.",
+      "apnsCategory": "The category of the notification.",
+      "apnsThreadId": "An identifier for grouping notifications.",
+      "apnsContentAvailable": "Provide this key with a value of 1 to indicate that new content is available.",
+      "apnsMutableContent": "Provide this key with a value of 1 to allow modification of the notification content in your app.",
+      "apnsSubtitle": "A secondary description for the notification.",
+      "apnsInterruptionLevel": "The interruption level of the notification.",
+      "webpushRequireInteraction": "Whether the notification requires user interaction.",
+      "webpushVibrate": "A vibration pattern for the device's vibration hardware to emit."
+    },
+    "errors": {
+      "noProject": "No project selected. Please select a project first.",
+      "noToken": "Device token is required.",
+      "noTopic": "Topic name is required.",
+      "noTitle": "Notification title is required.",
+      "noBody": "Notification body is required.",
+      "sendError": "An error occurred while sending the message"
+    },
+    "success": {
+      "sent": "Message Sent",
+      "sentDescription": "Notification sent successfully to project {{project}}"
+    }
+  },
+  "language": {
+    "switch": "Change Language",
+    "italian": "Italiano",
+    "english": "English"
+  }
+}

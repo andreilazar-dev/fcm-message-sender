@@ -10,11 +10,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Plus, X, Info, Send, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+type TargetType = "token" | "topic";
+
 interface FCMMessage {
-  to: string;
+  to?: string;
+  topic?: string;
   notification: {
     title: string;
     body: string;
@@ -30,6 +34,9 @@ interface FCMMessage {
       color?: string;
       tag?: string;
       priority?: string;
+      channel_id?: string;
+      ticker?: string;
+      notification_count?: number;
     };
   };
   apns?: {
@@ -41,6 +48,8 @@ interface FCMMessage {
         "thread-id"?: string;
         "content-available"?: number;
         "mutable-content"?: number;
+        subtitle?: string;
+        "interruption-level"?: "active" | "passive" | "time-sensitive";
       };
     };
   };
@@ -54,15 +63,16 @@ interface FCMMessage {
 
 interface FCMMessageFormProps {
   selectedProject: string | null;
-  onSendMessage: (message: FCMMessage) => void;
+  onSendMessage: (message: FCMMessage) => Promise<any>;
 }
 
 export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFormProps) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   
+  const [targetType, setTargetType] = useState<TargetType>("token");
   const [formData, setFormData] = useState({
-    to: "",
+    target: "",
     notification: {
       title: "",
       body: "",
@@ -76,7 +86,10 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
       sound: "",
       color: "",
       tag: "",
-      priority: ""
+      priority: "",
+      channelId: "",
+      ticker: "",
+      notificationCount: ""
     },
     apns: {
       sound: "",
@@ -84,7 +97,9 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
       category: "",
       threadId: "",
       contentAvailable: false,
-      mutableContent: false
+      mutableContent: false,
+      subtitle: "",
+      interruptionLevel: ""
     },
     webpush: {
       requireInteraction: false,
@@ -94,17 +109,23 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
 
   const [customDataKey, setCustomDataKey] = useState("");
   const [customDataValue, setCustomDataValue] = useState("");
-  const [receivedJson, setReceivedJson] = useState<any>(null);
+  const [receivedJson, setReceivedJson] = useState<Record<string, unknown> | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
   // Build final message with only non-empty fields
   const finalMessage = useMemo((): FCMMessage => {
     const message: FCMMessage = {
-      to: formData.to,
       notification: {
         title: formData.notification.title,
         body: formData.notification.body
       }
     };
+
+    if (targetType === 'token') {
+      message.to = formData.target;
+    } else {
+      message.topic = formData.target;
+    }
 
     // Add optional notification fields only if not empty
     if (formData.notification.icon?.trim()) {
@@ -126,31 +147,36 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
     }
 
     // Add Android config only if has values
-    const androidConfig: any = {};
+    const androidConfig: Partial<FCMMessage['android']['notification']> = {};
     if (formData.android.sound?.trim()) androidConfig.sound = formData.android.sound;
     if (formData.android.color?.trim()) androidConfig.color = formData.android.color;
     if (formData.android.tag?.trim()) androidConfig.tag = formData.android.tag;
     if (formData.android.priority?.trim()) androidConfig.priority = formData.android.priority;
+    if (formData.android.channelId?.trim()) androidConfig.channel_id = formData.android.channelId;
+    if (formData.android.ticker?.trim()) androidConfig.ticker = formData.android.ticker;
+    if (formData.android.notificationCount?.trim()) androidConfig.notification_count = parseInt(formData.android.notificationCount);
     
     if (Object.keys(androidConfig).length > 0) {
-      message.android = { notification: androidConfig };
+      message.android = { notification: androidConfig as FCMMessage['android']['notification'] };
     }
 
     // Add APNS config only if has values
-    const apnsConfig: any = {};
+    const apnsConfig: Partial<FCMMessage['apns']['payload']['aps']> = {};
     if (formData.apns.sound?.trim()) apnsConfig.sound = formData.apns.sound;
     if (formData.apns.badge?.trim()) apnsConfig.badge = parseInt(formData.apns.badge);
     if (formData.apns.category?.trim()) apnsConfig.category = formData.apns.category;
     if (formData.apns.threadId?.trim()) apnsConfig["thread-id"] = formData.apns.threadId;
     if (formData.apns.contentAvailable) apnsConfig["content-available"] = 1;
     if (formData.apns.mutableContent) apnsConfig["mutable-content"] = 1;
+    if (formData.apns.subtitle?.trim()) apnsConfig.subtitle = formData.apns.subtitle;
+    if (formData.apns.interruptionLevel?.trim()) apnsConfig["interruption-level"] = formData.apns.interruptionLevel as "active" | "passive" | "time-sensitive";
 
     if (Object.keys(apnsConfig).length > 0) {
-      message.apns = { payload: { aps: apnsConfig } };
+      message.apns = { payload: { aps: apnsConfig as FCMMessage['apns']['payload']['aps'] } };
     }
 
     // Add WebPush config only if has values
-    const webpushConfig: any = {};
+    const webpushConfig: Partial<FCMMessage['webpush']['notification']> = {};
     if (formData.webpush.requireInteraction) webpushConfig.requireInteraction = true;
     if (formData.webpush.vibrate?.trim()) {
       const vibrate = formData.webpush.vibrate.split(",").map(v => parseInt(v.trim())).filter(v => !isNaN(v));
@@ -158,54 +184,48 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
     }
 
     if (Object.keys(webpushConfig).length > 0) {
-      message.webpush = { notification: webpushConfig };
+      message.webpush = { notification: webpushConfig as FCMMessage['webpush']['notification'] };
     }
 
     return message;
-  }, [formData]);
+  }, [formData, targetType]);
 
   const handleSendMessage = async () => {
+    // Validations
     if (!selectedProject) {
-      toast({
-        title: t('message.errors.noProject'),
-        variant: "destructive"
-      });
+      toast({ title: t('message.errors.noProject'), variant: "destructive" });
       return;
     }
-
-    if (!formData.to.trim()) {
-      toast({
-        title: t('message.errors.noToken'),
-        variant: "destructive"
-      });
+    if (!formData.target.trim()) {
+      toast({ title: t(targetType === 'token' ? 'message.errors.noToken' : 'message.errors.noTopic'), variant: "destructive" });
       return;
     }
-
     if (!formData.notification.title.trim() || !formData.notification.body.trim()) {
-      toast({
-        title: t('message.errors.noTitle'),
-        description: t('message.errors.noBody'),
-        variant: "destructive"
-      });
+      toast({ title: t('message.errors.noTitle'), description: t('message.errors.noBody'), variant: "destructive" });
       return;
     }
 
-    // Simulate received response
-    setReceivedJson({
-      success: true,
-      message_id: `fcm_${Date.now()}`,
-      multicast_id: Math.floor(Math.random() * 1000000000000000),
-      success_count: 1,
-      failure_count: 0,
-      canonical_ids: 0,
-      results: [
-        {
-          message_id: `0:${Date.now()}%${Math.random().toString(36).substr(2, 9)}`
-        }
-      ]
-    });
+    setIsSending(true);
+    setReceivedJson(null);
 
-    onSendMessage(finalMessage);
+    try {
+      const response = await onSendMessage(finalMessage);
+      setReceivedJson(response);
+      toast({
+        title: t('message.success.sent'),
+        description: t('message.success.sentDescription', { project: selectedProject }),
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      setReceivedJson({ error: errorMessage });
+      toast({
+        title: t('message.errors.sendError'),
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const addCustomData = () => {
@@ -257,18 +277,52 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* Device Token */}
-            <div className="space-y-2">
-              <InfoTooltip content={t('message.tooltips.deviceToken')}>
-                <Label htmlFor="deviceToken">{t('message.deviceToken')} *</Label>
-              </InfoTooltip>
-              <Input
-                id="deviceToken"
-                placeholder={t('message.deviceTokenPlaceholder')}
-                value={formData.to}
-                onChange={(e) => setFormData(prev => ({ ...prev, to: e.target.value }))}
-                className="font-mono text-sm"
-              />
+            {/* Target */}
+            <div className="space-y-3">
+              <Label>{t('message.target.title')} *</Label>
+              <RadioGroup
+                defaultValue="token"
+                value={targetType}
+                onValueChange={(value: TargetType) => setTargetType(value)}
+                className="flex space-x-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="token" id="token" />
+                  <Label htmlFor="token">{t('message.target.token')}</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="topic" id="topic" />
+                  <Label htmlFor="topic">{t('message.target.topic')}</Label>
+                </div>
+              </RadioGroup>
+              
+              {targetType === 'token' ? (
+                <div className="space-y-2">
+                  <InfoTooltip content={t('message.tooltips.deviceToken')}>
+                    <Label htmlFor="deviceToken">{t('message.deviceToken')} *</Label>
+                  </InfoTooltip>
+                  <Input
+                    id="deviceToken"
+                    placeholder={t('message.deviceTokenPlaceholder')}
+                    value={formData.target}
+                    onChange={(e) => setFormData(prev => ({ ...prev, target: e.target.value }))}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <InfoTooltip content={t('message.tooltips.topic')}>
+                    <Label htmlFor="topicName">{t('message.topicName')} *</Label>
+                  </InfoTooltip>
+                  <Input
+                    id="topicName"
+                    placeholder={t('message.topicNamePlaceholder')}
+                    value={formData.target}
+                    onChange={(e) => setFormData(prev => ({ ...prev, target: e.target.value }))}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              )}
             </div>
 
             <Tabs defaultValue="notification" className="w-full">
@@ -487,6 +541,51 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
                     </Select>
                   </div>
                 </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <InfoTooltip content={t('message.tooltips.androidChannelId')}>
+                      <Label>{t('message.android.channelId')}</Label>
+                    </InfoTooltip>
+                    <Input
+                      placeholder="channel_id"
+                      value={formData.android.channelId}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        android: { ...prev.android, channelId: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <InfoTooltip content={t('message.tooltips.androidTicker')}>
+                      <Label>{t('message.android.ticker')}</Label>
+                    </InfoTooltip>
+                    <Input
+                      placeholder="New message ticker"
+                      value={formData.android.ticker}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        android: { ...prev.android, ticker: e.target.value }
+                      }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                    <InfoTooltip content={t('message.tooltips.androidNotificationCount')}>
+                      <Label>{t('message.android.notificationCount')}</Label>
+                    </InfoTooltip>
+                    <Input
+                      type="number"
+                      placeholder="10"
+                      value={formData.android.notificationCount}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        android: { ...prev.android, notificationCount: e.target.value }
+                      }))}
+                    />
+                  </div>
               </TabsContent>
 
               {/* APNS Tab */}
@@ -550,6 +649,44 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
                       }))}
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <InfoTooltip content={t('message.tooltips.apnsSubtitle')}>
+                        <Label>{t('message.apns.subtitle')}</Label>
+                        </InfoTooltip>
+                        <Input
+                        placeholder="Notification subtitle"
+                        value={formData.apns.subtitle}
+                        onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            apns: { ...prev.apns, subtitle: e.target.value }
+                        }))}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <InfoTooltip content={t('message.tooltips.apnsInterruptionLevel')}>
+                        <Label>{t('message.apns.interruptionLevel')}</Label>
+                        </InfoTooltip>
+                        <Select
+                        value={formData.apns.interruptionLevel}
+                        onValueChange={(value) => setFormData(prev => ({
+                            ...prev,
+                            apns: { ...prev.apns, interruptionLevel: value }
+                        }))}
+                        >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select interruption level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="passive">{t('message.apns.interruptionLevels.passive')}</SelectItem>
+                            <SelectItem value="active">{t('message.apns.interruptionLevels.active')}</SelectItem>
+                            <SelectItem value="time-sensitive">{t('message.apns.interruptionLevels.time-sensitive')}</SelectItem>
+                        </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 <div className="space-y-4">
@@ -644,12 +781,21 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
 
             <Button 
               onClick={handleSendMessage}
-              disabled={!selectedProject || !formData.to.trim()}
+              disabled={!selectedProject || !formData.target.trim() || isSending}
               className="w-full"
               size="lg"
             >
-              <Send className="h-4 w-4 mr-2" />
-              {t('message.send')}
+              {isSending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                  {t('message.sending')}
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  {t('message.send')}
+                </>
+              )}
             </Button>
           </div>
         </CardContent>

@@ -1,0 +1,34 @@
+# Backend Production Dockerfile
+
+# ---- Build Stage ----
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install --production=false
+
+COPY . .
+
+RUN npm run build
+
+# ---- Production Stage ----
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm install --production=true
+
+# Copy compiled code from the build stage
+COPY --from=builder /app/dist ./dist
+
+# Copy certificates
+COPY certs ./certs
+
+EXPOSE 3001
+
+CMD ["npm", "start"]

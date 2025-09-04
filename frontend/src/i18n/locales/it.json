@@ -1,0 +1,163 @@
+{
+  "app": {
+    "title": "FCM Message Sender",
+    "description": "Invia notifiche push personalizzate attraverso Firebase Cloud Messaging. Gestisci multipli progetti, configura messaggi avanzati e raggiungi i tuoi utenti istantaneamente.",
+    "features": {
+      "quickSend": "Invio Rapido",
+      "secure": "Sicuro",
+      "multiPlatform": "Multi-Platforma"
+    },
+    "stats": {
+      "projectsConfigured": "Progetti Configurati",
+      "activeProject": "Progetto Attivo",
+      "status": "Stato",
+      "ready": "Pronto",
+      "configuring": "In Configurazione",
+      "none": "Nessuno"
+    },
+    "footer": "FCM Message Sender - Strumento per sviluppatori per testare e inviare notifiche Firebase",
+    "active": "Attivo",
+    "errors": {
+      "title": "Errore",
+      "generic": "Si è verificato un errore imprevisto.",
+      "fetchProjects": "Impossibile recuperare i progetti dal backend."
+    }
+  },
+  "certificates": {
+    "title": "Gestione Certificati Firebase",
+    "tooltip": "Carica i certificati JSON del tuo service account Firebase per abilitare l'invio di notifiche FCM.",
+    "pasteJson": "Incolla JSON Certificato",
+    "addBtn": "Aggiungi Certificato",
+    "uploaded": "Certificati Caricati",
+    "errors": {
+      "invalid": "Certificato non valido: mancano campi obbligatori.",
+      "add": "Impossibile aggiungere il certificato.",
+      "delete": "Impossibile eliminare il certificato.",
+      "invalidJson": "Formato JSON non valido."
+    },
+    "success": {
+      "added": "Certificato Aggiunto",
+      "addedDescription": "Certificato per il progetto aggiunto con successo",
+      "deleted": "Certificato Eliminato",
+      "deletedDescription": "Certificato per il progetto eliminato con successo"
+    }
+  },
+  "message": {
+    "title": "Componi Notifica",
+    "description": "Crea e invia una notifica push a un dispositivo o un topic.",
+    "deviceToken": "Token Dispositivo",
+    "deviceTokenPlaceholder": "Token di registrazione FCM",
+    "topicName": "Nome Topic",
+    "topicNamePlaceholder": "es. news",
+    "send": "Invia Messaggio",
+    "sending": "Invio in corso...",
+    "target": {
+      "title": "Destinazione",
+      "token": "Token",
+      "topic": "Topic"
+    },
+    "notification": {
+      "title": "Titolo",
+      "body": "Corpo",
+      "icon": "URL Icona",
+      "image": "URL Immagine",
+      "clickAction": "Azione al Click",
+      "badge": "URL Badge"
+    },
+    "customData": {
+      "add": "Aggiungi Dati Personalizzati",
+      "key": "Chiave",
+      "value": "Valore"
+    },
+    "tabs": {
+      "notification": "Notifica",
+      "customData": "Dati Personalizzati",
+      "android": "Android",
+      "apns": "APNs",
+      "webpush": "Web Push"
+    },
+    "android": {
+      "sound": "Suono",
+      "color": "Colore",
+      "tag": "Tag",
+      "priority": "Priorità",
+      "channelId": "ID Canale",
+      "ticker": "Ticker",
+      "notificationCount": "Conteggio Notifiche",
+      "priorities": {
+        "min": "Min",
+        "low": "Bassa",
+        "default": "Default",
+        "high": "Alta",
+        "max": "Max"
+      }
+    },
+    "apns": {
+      "sound": "Suono",
+      "badge": "Badge",
+      "category": "Categoria",
+      "threadId": "ID Thread",
+      "contentAvailable": "Contenuto Disponibile",
+      "mutableContent": "Contenuto Modificabile",
+      "subtitle": "Sottotitolo",
+      "interruptionLevel": "Livello di Interruzione",
+      "interruptionLevels": {
+        "passive": "Passivo",
+        "active": "Attivo",
+        "time-sensitive": "Urgente"
+      }
+    },
+    "webpush": {
+      "requireInteraction": "Richiedi Interazione",
+      "vibrate": "Pattern Vibrazione"
+    },
+    "jsonPreview": {
+      "sent": "JSON Inviato",
+      "received": "JSON Ricevuto"
+    },
+    "tooltips": {
+      "deviceToken": "Il token di registrazione FCM per il dispositivo di destinazione.",
+      "topic": "Il nome del topic a cui inviare il messaggio.",
+      "title": "Il titolo della notifica.",
+      "body": "Il testo del corpo della notifica.",
+      "icon": "L'URL dell'icona da visualizzare.",
+      "image": "L'URL di un'immagine da visualizzare nella notifica.",
+      "clickAction": "L'azione associata a un clic dell'utente sulla notifica.",
+      "badge": "L'URL del badge da visualizzare.",
+      "androidSound": "Il suono da riprodurre quando il dispositivo riceve la notifica.",
+      "androidColor": "Il colore dell'icona della notifica, espresso in formato #rrggbb.",
+      "androidTag": "Identificatore utilizzato per sostituire le notifiche esistenti nel cassetto delle notifiche.",
+      "androidPriority": "La priorità della notifica.",
+      "androidChannelId": "L'ID del canale della notifica (novità di Android O).",
+      "androidTicker": "Il testo da far scorrere sullo schermo all'arrivo della notifica.",
+      "androidNotificationCount": "Il numero da visualizzare in un badge sull'icona dell'app.",
+      "apnsSound": "Il suono da riprodurre quando il dispositivo riceve la notifica.",
+      "apnsBadge": "Il numero da visualizzare in un badge sull'icona della tua app.",
+      "apnsCategory": "La categoria della notifica.",
+      "apnsThreadId": "Un identificatore per raggruppare le notifiche.",
+      "apnsContentAvailable": "Fornisci questa chiave con un valore di 1 per indicare che è disponibile nuovo contenuto.",
+      "apnsMutableContent": "Fornisci questa chiave con un valore di 1 per consentire la modifica del contenuto della notifica nella tua app.",
+      "apnsSubtitle": "Una descrizione secondaria per la notifica.",
+      "apnsInterruptionLevel": "Il livello di interruzione della notifica.",
+      "webpushRequireInteraction": "Indica se la notifica richiede l'interazione dell'utente.",
+      "webpushVibrate": "Un pattern di vibrazione per l'hardware di vibrazione del dispositivo."
+    },
+    "errors": {
+      "noProject": "Nessun progetto selezionato. Seleziona prima un progetto.",
+      "noToken": "Il token del dispositivo è obbligatorio.",
+      "noTopic": "Il nome del topic è obbligatorio.",
+      "noTitle": "Il titolo della notifica è obbligatorio.",
+      "noBody": "Il corpo della notifica è obbligatorio.",
+      "sendError": "Si è verificato un errore durante l'invio del messaggio"
+    },
+    "success": {
+      "sent": "Messaggio Inviato",
+      "sentDescription": "Notifica inviata con successo al progetto {{project}}"
+    }
+  },
+  "language": {
+    "switch": "Cambia Lingua",
+    "italian": "Italiano",
+    "english": "English"
+  }
+}

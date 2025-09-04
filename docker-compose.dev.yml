@@ -1,17 +1,33 @@
-version: '3.8'
-
 services:
-  fcm-sender-dev:
+  frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile.dev
     ports:
       - "8080:8080"
     volumes:
-      - .:/app
+      - ./frontend:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
     restart: unless-stopped
+    depends_on:
+      - backend
     command: npm run dev
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/certs:/app/certs
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    restart: unless-stopped

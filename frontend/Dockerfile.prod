@@ -18,7 +18,7 @@ COPY . .
 
 # Run the Vite production build
 # This command creates the 'dist' folder with optimized code
-RUN npm run build
+RUN npm run build -- --mode prod
 
 # Stage 2: Create the production image
 # Use a minimal base image for the final production container
@@ -31,12 +31,12 @@ WORKDIR /app
 COPY --from=build-stage /app/dist ./dist
 
 # Expose the port on which the application will listen
-EXPOSE 80
+EXPOSE 8080
 
 # Command to start a lightweight server to serve the static files
 # This is ideal for Single Page Applications (SPAs)
 RUN npm install -g serve
-CMD ["serve", "-s", "dist"]
+CMD ["serve", "-s", "dist", "--listen", "8080"]
 
 # If your app has a server (e.g., Express.js) in './dist/server.js'
 # CMD ["node", "dist/server.js"]

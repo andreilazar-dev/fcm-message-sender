@@ -1,20 +1,23 @@
-version: '3.8'
-
 services:
-  app:
-    # Specifies to Docker Compose to use the Dockerfile in this directory
-    # and the 'production' target if it were a single Dockerfile
+  frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile.prod
-    
-    # Assign a recognizable name to the container
-    container_name: fcm-sender-prod
-
-    # Map a less common port on your host (9090) to the container's internal port (8080).
-    # This means the app is accessible at http://your_ip_address:9090 from outside.
     ports:
       - "9090:8080"
+    restart: unless-stopped
+    depends_on:
+      - backend
 
-    # Restart policy: the container will automatically restart if it stops unexpectedly
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/certs:/app/certs
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
     restart: unless-stopped

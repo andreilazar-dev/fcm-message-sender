@@ -14,3 +14,6 @@ Dockerfile
 Dockerfile.dev
 docker-compose.yml
 docker-compose.dev.yml
+
+# Exclude backend from frontend container
+backend/

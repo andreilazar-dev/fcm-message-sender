@@ -2,6 +2,10 @@
 
 **FCM Message Sender** is a modern and minimal web app for sending push notifications through Firebase Cloud Messaging (FCM). Designed for developers who need to test and send custom notifications to their Firebase projects. The web app is multilingual (English and Italian).
 
+For more fileds and info consult 
+
+https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages
+
 ![FCM Message Sender](https://img.shields.io/badge/Firebase-FCM-orange) ![Docker](https://img.shields.io/badge/Docker-Ready-blue) ![React](https://img.shields.io/badge/React-18-61dafb) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 
 ## 🚀 Key Features

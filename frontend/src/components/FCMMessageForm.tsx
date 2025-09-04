@@ -23,7 +23,6 @@ interface FCMMessage {
     title: string;
     body: string;
     icon?: string;
-    image?: string;
     click_action?: string;
     badge?: string;
   };
@@ -37,6 +36,7 @@ interface FCMMessage {
       channel_id?: string;
       ticker?: string;
       notification_count?: number;
+      imageUrl?: string;
     };
   };
   apns?: {
@@ -52,9 +52,15 @@ interface FCMMessage {
         "interruption-level"?: "active" | "passive" | "time-sensitive";
       };
     };
+    fcm_options?: {
+      image?: string;
+    };
   };
   webpush?: {
-    notification: {
+    headers?: {
+      image?: string;
+    };
+    notification?: {
       requireInteraction?: boolean;
       vibrate?: number[];
     };
@@ -77,7 +83,7 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
       title: "",
       body: "",
       icon: "",
-      image: "",
+      // image: "", // Removed
       click_action: "",
       badge: ""
     },
@@ -89,7 +95,8 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
       priority: "",
       channelId: "",
       ticker: "",
-      notificationCount: ""
+      notificationCount: "",
+      imageUrl: "" // Added
     },
     apns: {
       sound: "",
@@ -99,11 +106,13 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
       contentAvailable: false,
       mutableContent: false,
       subtitle: "",
-      interruptionLevel: ""
+      interruptionLevel: "",
+      fcmOptionsImage: "" // Added for apns.fcm_options.image
     },
     webpush: {
       requireInteraction: false,
-      vibrate: ""
+      vibrate: "",
+      headersImage: "" // Added for webpush.headers.image
     }
   });
 
@@ -131,8 +140,15 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
     if (formData.notification.icon?.trim()) {
       message.notification.icon = formData.notification.icon;
     }
-    if (formData.notification.image?.trim()) {
-      message.notification.image = formData.notification.image;
+    // Add optional notification fields only if not empty
+    if (formData.notification.icon?.trim()) {
+      message.notification.icon = formData.notification.icon;
+    }
+    if (formData.notification.click_action?.trim()) {
+      message.notification.click_action = formData.notification.click_action;
+    }
+    if (formData.notification.badge?.trim()) {
+      message.notification.badge = formData.notification.badge;
     }
     if (formData.notification.click_action?.trim()) {
       message.notification.click_action = formData.notification.click_action;
@@ -155,6 +171,7 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
     if (formData.android.channelId?.trim()) androidConfig.channel_id = formData.android.channelId;
     if (formData.android.ticker?.trim()) androidConfig.ticker = formData.android.ticker;
     if (formData.android.notificationCount?.trim()) androidConfig.notification_count = parseInt(formData.android.notificationCount);
+    if (formData.android.imageUrl?.trim()) androidConfig.imageUrl = formData.android.imageUrl;
     
     if (Object.keys(androidConfig).length > 0) {
       message.android = { notification: androidConfig as FCMMessage['android']['notification'] };
@@ -171,20 +188,35 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
     if (formData.apns.subtitle?.trim()) apnsConfig.subtitle = formData.apns.subtitle;
     if (formData.apns.interruptionLevel?.trim()) apnsConfig["interruption-level"] = formData.apns.interruptionLevel as "active" | "passive" | "time-sensitive";
 
-    if (Object.keys(apnsConfig).length > 0) {
+    const apnsFCMOptions: Partial<FCMMessage['apns']['fcm_options']> = {};
+    if (formData.apns.fcmOptionsImage?.trim()) apnsFCMOptions.image = formData.apns.fcmOptionsImage;
+
+    if (Object.keys(apnsConfig).length > 0 || Object.keys(apnsFCMOptions).length > 0) {
       message.apns = { payload: { aps: apnsConfig as FCMMessage['apns']['payload']['aps'] } };
+      if (Object.keys(apnsFCMOptions).length > 0) {
+        message.apns.fcm_options = apnsFCMOptions as FCMMessage['apns']['fcm_options'];
+      }
     }
 
     // Add WebPush config only if has values
-    const webpushConfig: Partial<FCMMessage['webpush']['notification']> = {};
-    if (formData.webpush.requireInteraction) webpushConfig.requireInteraction = true;
+    const webpushNotificationConfig: Partial<FCMMessage['webpush']['notification']> = {};
+    if (formData.webpush.requireInteraction) webpushNotificationConfig.requireInteraction = true;
     if (formData.webpush.vibrate?.trim()) {
       const vibrate = formData.webpush.vibrate.split(",").map(v => parseInt(v.trim())).filter(v => !isNaN(v));
-      if (vibrate.length > 0) webpushConfig.vibrate = vibrate;
+      if (vibrate.length > 0) webpushNotificationConfig.vibrate = vibrate;
     }
 
-    if (Object.keys(webpushConfig).length > 0) {
-      message.webpush = { notification: webpushConfig as FCMMessage['webpush']['notification'] };
+    const webpushHeadersConfig: Partial<FCMMessage['webpush']['headers']> = {};
+    if (formData.webpush.headersImage?.trim()) webpushHeadersConfig.image = formData.webpush.headersImage;
+
+    if (Object.keys(webpushNotificationConfig).length > 0 || Object.keys(webpushHeadersConfig).length > 0) {
+      if (Object.keys(webpushNotificationConfig).length > 0) {
+        message.webpush = { notification: webpushNotificationConfig as FCMMessage['webpush']['notification'] };
+      }
+      if (Object.keys(webpushHeadersConfig).length > 0) {
+        if (!message.webpush) message.webpush = {};
+        message.webpush.headers = webpushHeadersConfig as FCMMessage['webpush']['headers'];
+      }
     }
 
     return message;
@@ -384,36 +416,19 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.image')}>
-                      <Label htmlFor="image">{t('message.notification.image')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      id="image"
-                      placeholder="https://example.com/image.jpg"
-                      value={formData.notification.image}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        notification: { ...prev.notification, image: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.clickAction')}>
-                      <Label htmlFor="clickAction">{t('message.notification.clickAction')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      id="clickAction"
-                      placeholder="https://example.com or FLUTTER_NOTIFICATION_CLICK"
-                      value={formData.notification.click_action}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        notification: { ...prev.notification, click_action: e.target.value }
-                      }))}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <InfoTooltip content={t('message.tooltips.clickAction')}>
+                    <Label htmlFor="clickAction">{t('message.notification.clickAction')}</Label>
+                  </InfoTooltip>
+                  <Input
+                    id="clickAction"
+                    placeholder="https://example.com or FLUTTER_NOTIFICATION_CLICK"
+                    value={formData.notification.click_action}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      notification: { ...prev.notification, click_action: e.target.value }
+                    }))}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -586,6 +601,21 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
                       }))}
                     />
                   </div>
+
+                <div className="space-y-2">
+                  <InfoTooltip content={t('message.tooltips.androidImageUrl')}>
+                    <Label htmlFor="androidImageUrl">{t('message.android.imageUrl')}</Label>
+                  </InfoTooltip>
+                  <Input
+                    id="androidImageUrl"
+                    placeholder="https://foo.bar.pizza-monster.png"
+                    value={formData.android.imageUrl}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      android: { ...prev.android, imageUrl: e.target.value }
+                    }))}
+                  />
+                </div>
               </TabsContent>
 
               {/* APNS Tab */}
@@ -718,6 +748,21 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
                     </InfoTooltip>
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <InfoTooltip content={t('message.tooltips.apnsFCMOptionsImage')}>
+                    <Label htmlFor="apnsFCMOptionsImage">{t('message.apns.fcmOptionsImage')}</Label>
+                  </InfoTooltip>
+                  <Input
+                    id="apnsFCMOptionsImage"
+                    placeholder="https://foo.bar.pizza-monster.png"
+                    value={formData.apns.fcmOptionsImage}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      apns: { ...prev.apns, fcmOptionsImage: e.target.value }
+                    }))}
+                  />
+                </div>
               </TabsContent>
 
               {/* Web Push Tab */}
@@ -750,6 +795,21 @@ export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFor
                       }))}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <InfoTooltip content={t('message.tooltips.webpushHeadersImage')}>
+                    <Label htmlFor="webpushHeadersImage">{t('message.webpush.headersImage')}</Label>
+                  </InfoTooltip>
+                  <Input
+                    id="webpushHeadersImage"
+                    placeholder="https://foo.bar.pizza-monster.png"
+                    value={formData.webpush.headersImage}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      webpush: { ...prev.webpush, headersImage: e.target.value }
+                    }))}
+                  />
                 </div>
               </TabsContent>
             </Tabs>

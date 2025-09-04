@@ -18,10 +18,17 @@ export const sendMessage = async (projectId: string, message: Record<string, any
     body: JSON.stringify({ projectId, message }),
   });
 
-  const result = await response.json();
+  let result;
+  try {
+    result = await response.json();
+  } catch (e) {
+    // If JSON parsing fails, or response is not JSON, throw an error
+    throw new Error(`Failed to parse response from server. Status: ${response.status}. Error: ${e.message}`);
+  }
 
   if (!response.ok || !result.success) {
-    throw new Error(result.error || "Failed to send message");
+    // If HTTP response is not OK, or backend indicates application-level error
+    throw new Error(result.error || `Failed to send message. Status: ${response.status}.`);
   }
 
   return result.response;

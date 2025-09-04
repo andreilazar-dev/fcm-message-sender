@@ -60,7 +60,6 @@
       "title": "Titolo",
       "body": "Corpo",
       "icon": "URL Icona",
-      "image": "URL Immagine",
       "clickAction": "Azione al Click",
       "badge": "URL Badge"
     },
@@ -84,6 +83,7 @@
       "channelId": "ID Canale",
       "ticker": "Ticker",
       "notificationCount": "Conteggio Notifiche",
+      "imageUrl": "URL Immagine",
       "priorities": {
         "min": "Min",
         "low": "Bassa",
@@ -101,6 +101,7 @@
       "mutableContent": "Contenuto Modificabile",
       "subtitle": "Sottotitolo",
       "interruptionLevel": "Livello di Interruzione",
+      "fcmOptionsImage": "URL Immagine",
       "interruptionLevels": {
         "passive": "Passivo",
         "active": "Attivo",
@@ -109,7 +110,8 @@
     },
     "webpush": {
       "requireInteraction": "Richiedi Interazione",
-      "vibrate": "Pattern Vibrazione"
+      "vibrate": "Pattern Vibrazione",
+      "headersImage": "URL Immagine"
     },
     "jsonPreview": {
       "sent": "JSON Inviato",
@@ -121,7 +123,6 @@
       "title": "Il titolo della notifica.",
       "body": "Il testo del corpo della notifica.",
       "icon": "L'URL dell'icona da visualizzare.",
-      "image": "L'URL di un'immagine da visualizzare nella notifica.",
       "clickAction": "L'azione associata a un clic dell'utente sulla notifica.",
       "badge": "L'URL del badge da visualizzare.",
       "androidSound": "Il suono da riprodurre quando il dispositivo riceve la notifica.",
@@ -131,6 +132,7 @@
       "androidChannelId": "L'ID del canale della notifica (novità di Android O).",
       "androidTicker": "Il testo da far scorrere sullo schermo all'arrivo della notifica.",
       "androidNotificationCount": "Il numero da visualizzare in un badge sull'icona dell'app.",
+      "androidImageUrl": "L'URL di un'immagine da visualizzare nella notifica Android.",
       "apnsSound": "Il suono da riprodurre quando il dispositivo riceve la notifica.",
       "apnsBadge": "Il numero da visualizzare in un badge sull'icona della tua app.",
       "apnsCategory": "La categoria della notifica.",
@@ -139,8 +141,10 @@
       "apnsMutableContent": "Fornisci questa chiave con un valore di 1 per consentire la modifica del contenuto della notifica nella tua app.",
       "apnsSubtitle": "Una descrizione secondaria per la notifica.",
       "apnsInterruptionLevel": "Il livello di interruzione della notifica.",
+      "apnsFCMOptionsImage": "L'URL di un'immagine da visualizzare nella notifica APNs (tramite fcm_options).",
       "webpushRequireInteraction": "Indica se la notifica richiede l'interazione dell'utente.",
-      "webpushVibrate": "Un pattern di vibrazione per l'hardware di vibrazione del dispositivo."
+      "webpushVibrate": "Un pattern di vibrazione per l'hardware di vibrazione del dispositivo.",
+      "webpushHeadersImage": "L'URL di un'immagine da visualizzare nella notifica Web Push (tramite headers)."
     },
     "errors": {
       "noProject": "Nessun progetto selezionato. Seleziona prima un progetto.",

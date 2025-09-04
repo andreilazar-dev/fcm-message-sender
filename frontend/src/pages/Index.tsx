@@ -48,7 +48,7 @@ const Index = () => {
   const handleSendMessage = async (message: Record<string, any>) => {
     if (!selectedProject) {
       toast({ title: t('message.errors.noProject'), variant: "destructive" });
-      return;
+      throw new Error(t('message.errors.noProject')); // Re-throw for parent component
     }
     
     try {
@@ -58,6 +58,7 @@ const Index = () => {
         title: t('message.success.sent'),
         description: t('message.success.sentDescription', { project: selectedProject })
       });
+      return { success: true }; // Return a success indicator
 
     } catch (error) {
       toast({
@@ -65,6 +66,7 @@ const Index = () => {
         description: error instanceof Error ? error.message : t('app.errors.generic'),
         variant: "destructive"
       });
+      throw error; // Re-throw the error
     }
   };
 

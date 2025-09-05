@@ -20,6 +20,7 @@
     "message": {
         "title": "Compose Notification",
         "descriptionV1": "Compose and send a v1 API-compliant message to a device, topic, or condition.",
+        "none": "None",
         "send": "Send Message",
         "sending": "Sending...",
         "target": { "title": "Target", "token": "Token", "topic": "Topic", "condition": "Condition" },

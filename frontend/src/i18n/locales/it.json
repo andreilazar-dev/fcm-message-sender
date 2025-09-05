@@ -20,6 +20,7 @@
     "message": {
         "title": "Componi Notifica",
         "descriptionV1": "Componi e invia un messaggio conforme all\u0027API v1 a un dispositivo, topic o condizione.",
+        "none": "Nessuno",
         "send": "Invia Messaggio",
         "sending": "Invio in corso...",
         "target": { "title": "Destinazione", "token": "Token", "topic": "Topic", "condition": "Condizione" },

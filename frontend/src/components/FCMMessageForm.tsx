@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,857 +7,367 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, X, Info, Send, Smartphone } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Plus, X, Info, Send, Smartphone, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { produce } from "immer";
 
-type TargetType = "token" | "topic";
-
-interface FCMMessage {
-  token?: string;
-  topic?: string;
-  notification: {
-    title: string;
-    body: string;
+// #region Interfaces
+interface FcmMessageV1 { message: Message; }
+interface Message {
+    token?: string;
+    topic?: string;
+    condition?: string;
+    data?: Record<string, string>;
+    notification?: Notification;
+    fcm_options?: { analytics_label?: string; };
+    android?: AndroidConfig;
+    apns?: ApnsConfig;
+    webpush?: WebpushConfig;
+}
+interface Notification { title?: string; body?: string; }
+interface AndroidConfig {
+    ttl?: string;
+    priority?: 'NORMAL' | 'HIGH';
+    collapse_key?: string;
+    restricted_package_name?: string;
+    data?: Record<string, string>;
+    notification?: AndroidNotification;
+    fcm_options?: { analytics_label?: string; };
+}
+interface AndroidNotification {
+    title?: string;
+    body?: string;
     icon?: string;
+    color?: string;
+    sound?: string;
+    tag?: string;
     click_action?: string;
-    badge?: string;
-  };
-  data?: Record<string, string>;
-  android?: {
-    notification: {
-      sound?: string;
-      color?: string;
-      tag?: string;
-      priority?: string;
-      channel_id?: string;
-      ticker?: string;
-      notification_count?: number;
-      imageUrl?: string;
-    };
-  };
-  apns?: {
-    payload: {
-      aps: {
-        sound?: string;
-        badge?: number;
-        category?: string;
-        "thread-id"?: string;
-        "content-available"?: number;
-        "mutable-content"?: number;
-        subtitle?: string;
-        "interruption-level"?: "active" | "passive" | "time-sensitive";
-      };
-    };
-    fcm_options?: {
-      image?: string;
-    };
-  };
-  webpush?: {
-    headers?: {
-      image?: string;
-    };
-    notification?: {
-      requireInteraction?: boolean;
-      vibrate?: number[];
-    };
-  };
+    body_loc_key?: string;
+    body_loc_args?: string[];
+    title_loc_key?: string;
+    title_loc_args?: string[];
+    channel_id?: string;
+    ticker?: string;
+    sticky?: boolean;
+    event_time?: string;
+    local_only?: boolean;
+    default_sound?: boolean;
+    default_vibrate_timings?: boolean;
+    default_light_settings?: boolean;
+    vibrate_timings?: string[];
+    visibility?: 'VISIBILITY_UNSPECIFIED' | 'PRIVATE' | 'PUBLIC' | 'SECRET';
+    notification_priority?: 'PRIORITY_UNSPECIFIED' | 'PRIORITY_MIN' | 'PRIORITY_LOW' | 'PRIORITY_DEFAULT' | 'PRIORITY_HIGH' | 'PRIORITY_MAX';
+    importance?: 'IMPORTANCE_UNSPECIFIED' | 'IMPORTANCE_LOW' | 'IMPORTANCE_DEFAULT' | 'IMPORTANCE_HIGH' | 'IMPORTANCE_MIN';
+    light_settings?: { color: { red: number; green: number; blue: number; alpha: number; }; light_on_duration?: string; light_off_duration?: string; };
+    image?: string;
 }
+interface ApnsConfig {
+    headers?: Record<string, string>;
+    payload?: { aps: Aps; [key: string]: any; };
+    fcm_options?: { analytics_label?: string; image?: string; };
+}
+interface Aps {
+    alert?: { title?: string; body?: string; };
+    badge?: number;
+    sound?: string;
+    content_available?: boolean;
+    category?: string;
+    thread_id?: string;
+}
+interface WebpushConfig {
+    headers?: Record<string, string>;
+    notification?: WebpushNotification;
+    data?: Record<string, string>;
+    fcm_options?: { link?: string; analytics_label?: string; };
+}
+interface WebpushNotification {
+    title?: string;
+    body?: string;
+    icon?: string;
+    image?: string;
+    tag?: string;
+    actions?: { action: string; title: string; icon: string; }[];
+}
+interface FCMMessageFormProps { selectedProject: string | null; onSendMessage: (message: FcmMessageV1) => Promise<any>; }
+// #endregion
 
-interface FCMMessageFormProps {
-  selectedProject: string | null;
-  onSendMessage: (message: FCMMessage) => Promise<any>;
-}
+const initialFormState: Message = { webpush: { notification: { actions: [] } } };
 
 export const FCMMessageForm = ({ selectedProject, onSendMessage }: FCMMessageFormProps) => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  
-  const [targetType, setTargetType] = useState<TargetType>("token");
-  const [formData, setFormData] = useState({
-    target: "",
-    notification: {
-      title: "",
-      body: "",
-      icon: "",
-      // image: "", // Removed
-      click_action: "",
-      badge: ""
-    },
-    customData: [] as { key: string; value: string }[],
-    android: {
-      sound: "",
-      color: "",
-      tag: "",
-      priority: "",
-      channelId: "",
-      ticker: "",
-      notificationCount: "",
-      imageUrl: "" // Added
-    },
-    apns: {
-      sound: "",
-      badge: "",
-      category: "",
-      threadId: "",
-      contentAvailable: false,
-      mutableContent: false,
-      subtitle: "",
-      interruptionLevel: "",
-      fcmOptionsImage: "" // Added for apns.fcm_options.image
-    },
-    webpush: {
-      requireInteraction: false,
-      vibrate: "",
-      headersImage: "" // Added for webpush.headers.image
-    }
-  });
 
-  const [customDataKey, setCustomDataKey] = useState("");
-  const [customDataValue, setCustomDataValue] = useState("");
+  const [targetType, setTargetType] = useState<"token" | "topic" | "condition">("token");
+  const [formData, setFormData] = useState<Message>(initialFormState);
+  const [customData, setCustomData] = useState<{ key: string; value: string }[]>([]);
+  const [webActions, setWebActions] = useState<{ action: string; title: string; icon: string; }[]>([]);
+  
   const [receivedJson, setReceivedJson] = useState<Record<string, unknown> | null>(null);
   const [isSending, setIsSending] = useState(false);
 
-  // Build final message with only non-empty fields
-  const finalMessage = useMemo((): FCMMessage => {
-    const message: FCMMessage = {
-      notification: {
-        title: formData.notification.title,
-        body: formData.notification.body
+  const handleFormChange = useCallback((path: string, value: any) => {
+    setFormData(produce(draft => {
+      const keys = path.split('.');
+      let current: any = draft;
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (current[keys[i]] === undefined) current[keys[i]] = {};
+        current = current[keys[i]];
       }
+      current[keys[keys.length - 1]] = value === '' ? undefined : value;
+    }));
+  }, []);
+
+  const finalMessage = useMemo((): FcmMessageV1 => {
+    const pruneEmpty = (obj: any): any => {
+        if (obj === null || obj === undefined) return undefined;
+        if (Array.isArray(obj)) {
+            const pruned = obj.map(pruneEmpty).filter(v => v !== undefined);
+            return pruned.length > 0 ? pruned : undefined;
+        }
+        if (typeof obj === 'object') {
+            const pruned = Object.entries(obj).reduce((acc, [key, value]) => {
+                const prunedValue = pruneEmpty(value);
+                if (prunedValue !== undefined) acc[key] = prunedValue;
+                return acc;
+            }, {} as { [key: string]: any });
+            return Object.keys(pruned).length > 0 ? pruned : undefined;
+        }
+        return obj;
     };
 
-    if (targetType === 'token') {
-      message.token = formData.target;
+    const message = pruneEmpty(formData) || {};
+    if (targetType && message[targetType]) {
+        if (targetType !== 'token') delete message.token;
+        if (targetType !== 'topic') delete message.topic;
+        if (targetType !== 'condition') delete message.condition;
     } else {
-      message.topic = formData.target;
+        delete message.token; delete message.topic; delete message.condition;
     }
-
-    // Add optional notification fields only if not empty
-    if (formData.notification.icon?.trim()) {
-      message.notification.icon = formData.notification.icon;
-    }
-    // Add optional notification fields only if not empty
-    if (formData.notification.icon?.trim()) {
-      message.notification.icon = formData.notification.icon;
-    }
-    if (formData.notification.click_action?.trim()) {
-      message.notification.click_action = formData.notification.click_action;
-    }
-    if (formData.notification.badge?.trim()) {
-      message.notification.badge = formData.notification.badge;
-    }
-    if (formData.notification.click_action?.trim()) {
-      message.notification.click_action = formData.notification.click_action;
-    }
-    if (formData.notification.badge?.trim()) {
-      message.notification.badge = formData.notification.badge;
-    }
-
-    // Add custom data only if exists
-    if (formData.customData.length > 0) {
-      message.data = Object.fromEntries(formData.customData.map(item => [item.key, item.value]));
-    }
-
-    // Add Android config only if has values
-    const androidConfig: Partial<FCMMessage['android']['notification']> = {};
-    if (formData.android.sound?.trim()) androidConfig.sound = formData.android.sound;
-    if (formData.android.color?.trim()) androidConfig.color = formData.android.color;
-    if (formData.android.tag?.trim()) androidConfig.tag = formData.android.tag;
-    if (formData.android.priority?.trim()) androidConfig.priority = formData.android.priority;
-    if (formData.android.channelId?.trim()) androidConfig.channel_id = formData.android.channelId;
-    if (formData.android.ticker?.trim()) androidConfig.ticker = formData.android.ticker;
-    if (formData.android.notificationCount?.trim()) androidConfig.notification_count = parseInt(formData.android.notificationCount);
-    if (formData.android.imageUrl?.trim()) androidConfig.imageUrl = formData.android.imageUrl;
-    
-    if (Object.keys(androidConfig).length > 0) {
-      message.android = { notification: androidConfig as FCMMessage['android']['notification'] };
-    }
-
-    // Add APNS config only if has values
-    const apnsConfig: Partial<FCMMessage['apns']['payload']['aps']> = {};
-    if (formData.apns.sound?.trim()) apnsConfig.sound = formData.apns.sound;
-    if (formData.apns.badge?.trim()) apnsConfig.badge = parseInt(formData.apns.badge);
-    if (formData.apns.category?.trim()) apnsConfig.category = formData.apns.category;
-    if (formData.apns.threadId?.trim()) apnsConfig["thread-id"] = formData.apns.threadId;
-    if (formData.apns.contentAvailable) apnsConfig["content-available"] = 1;
-    if (formData.apns.mutableContent) apnsConfig["mutable-content"] = 1;
-    if (formData.apns.subtitle?.trim()) apnsConfig.subtitle = formData.apns.subtitle;
-    if (formData.apns.interruptionLevel?.trim()) apnsConfig["interruption-level"] = formData.apns.interruptionLevel as "active" | "passive" | "time-sensitive";
-
-    const apnsFCMOptions: Partial<FCMMessage['apns']['fcm_options']> = {};
-    if (formData.apns.fcmOptionsImage?.trim()) apnsFCMOptions.image = formData.apns.fcmOptionsImage;
-
-    if (Object.keys(apnsConfig).length > 0 || Object.keys(apnsFCMOptions).length > 0) {
-      message.apns = { payload: { aps: apnsConfig as FCMMessage['apns']['payload']['aps'] } };
-      if (Object.keys(apnsFCMOptions).length > 0) {
-        message.apns.fcm_options = apnsFCMOptions as FCMMessage['apns']['fcm_options'];
-      }
-    }
-
-    // Add WebPush config only if has values
-    const webpushNotificationConfig: Partial<FCMMessage['webpush']['notification']> = {};
-    if (formData.webpush.requireInteraction) webpushNotificationConfig.requireInteraction = true;
-    if (formData.webpush.vibrate?.trim()) {
-      const vibrate = formData.webpush.vibrate.split(",").map(v => parseInt(v.trim())).filter(v => !isNaN(v));
-      if (vibrate.length > 0) webpushNotificationConfig.vibrate = vibrate;
-    }
-
-    const webpushHeadersConfig: Partial<FCMMessage['webpush']['headers']> = {};
-    if (formData.webpush.headersImage?.trim()) webpushHeadersConfig.image = formData.webpush.headersImage;
-
-    if (Object.keys(webpushNotificationConfig).length > 0 || Object.keys(webpushHeadersConfig).length > 0) {
-      if (Object.keys(webpushNotificationConfig).length > 0) {
-        message.webpush = { notification: webpushNotificationConfig as FCMMessage['webpush']['notification'] };
-      }
-      if (Object.keys(webpushHeadersConfig).length > 0) {
+    if (customData.length > 0) message.data = Object.fromEntries(customData.map(i => [i.key, i.value]));
+    if (webActions.length > 0) {
         if (!message.webpush) message.webpush = {};
-        message.webpush.headers = webpushHeadersConfig as FCMMessage['webpush']['headers'];
-      }
+        if (!message.webpush.notification) message.webpush.notification = {};
+        message.webpush.notification.actions = webActions;
     }
 
-    return message;
-  }, [formData, targetType]);
+    return { message };
+  }, [formData, targetType, customData, webActions]);
 
   const handleSendMessage = async () => {
-    // Validations
-    if (!selectedProject) {
-      toast({ title: t('message.errors.noProject'), variant: "destructive" });
-      return;
+    if (!selectedProject) { toast({ title: t('message.errors.noProject'), variant: "destructive" }); return; }
+    const targetValue = formData[targetType];
+    if (!targetValue || typeof targetValue !== 'string' || !targetValue.trim()) {
+        toast({ title: t(`message.errors.no${targetType.charAt(0).toUpperCase() + targetType.slice(1)}`), variant: "destructive" });
+        return;
     }
-    if (!formData.target.trim()) {
-      toast({ title: t(targetType === 'token' ? 'message.errors.noToken' : 'message.errors.noTopic'), variant: "destructive" });
-      return;
-    }
-    if (!formData.notification.title.trim() || !formData.notification.body.trim()) {
-      toast({ title: t('message.errors.noTitle'), description: t('message.errors.noBody'), variant: "destructive" });
-      return;
-    }
-
     setIsSending(true);
     setReceivedJson(null);
-
     try {
       const response = await onSendMessage(finalMessage);
       setReceivedJson(response);
-      toast({
-        title: t('message.success.sent'),
-        description: t('message.success.sentDescription', { project: selectedProject }),
-      });
+      toast({ title: t('message.success.sent'), description: t('message.success.sentDescription', { project: selectedProject }) });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       setReceivedJson({ error: errorMessage });
-      toast({
-        title: t('message.errors.sendError'),
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSending(false);
-    }
+      toast({ title: t('message.errors.sendError'), description: errorMessage, variant: "destructive" });
+    } finally { setIsSending(false); }
   };
 
   const addCustomData = () => {
-    if (customDataKey.trim() && customDataValue.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        customData: [...prev.customData, { key: customDataKey, value: customDataValue }]
-      }));
-      setCustomDataKey("");
-      setCustomDataValue("");
+    const key = (document.getElementById('customDataKey') as HTMLInputElement).value;
+    const value = (document.getElementById('customDataValue') as HTMLInputElement).value;
+    if (key.trim() && value.trim()) {
+      setCustomData([...customData, { key, value }]);
+      (document.getElementById('customDataKey') as HTMLInputElement).value = '';
+      (document.getElementById('customDataValue') as HTMLInputElement).value = '';
     }
   };
+  const removeCustomData = (index: number) => setCustomData(customData.filter((_, i) => i !== index));
 
-  const removeCustomData = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      customData: prev.customData.filter((_, i) => i !== index)
-    }));
+  const addWebAction = () => {
+    const action = { 
+        action: (document.getElementById('webActionAction') as HTMLInputElement).value, 
+        title: (document.getElementById('webActionTitle') as HTMLInputElement).value, 
+        icon: (document.getElementById('webActionIcon') as HTMLInputElement).value 
+    };
+    if (action.action.trim() && action.title.trim()) {
+        setWebActions([...webActions, action]);
+        (document.getElementById('webActionAction') as HTMLInputElement).value = '';
+        (document.getElementById('webActionTitle') as HTMLInputElement).value = '';
+        (document.getElementById('webActionIcon') as HTMLInputElement).value = '';
+    }
   };
+  const removeWebAction = (index: number) => setWebActions(webActions.filter((_, i) => i !== index));
 
-  const InfoTooltip = ({ children, content }: { children: React.ReactNode, content: string }) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="flex items-center gap-1">
-          {children}
-          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-        </div>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p className="max-w-xs text-xs">{content}</p>
-      </TooltipContent>
-    </Tooltip>
+  const InfoTooltip = ({ children, contentKey }: { children: React.ReactNode, contentKey: string }) => (
+    <Tooltip><TooltipTrigger asChild><div className="flex items-center gap-1 cursor-help">{children}<Info className="h-3 w-3 text-muted-foreground" /></div></TooltipTrigger><TooltipContent><p className="max-w-sm text-xs">{t(contentKey)}</p></TooltipContent></Tooltip>
   );
 
   return (
     <TooltipProvider>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Smartphone className="h-5 w-5 text-primary" />
-            {t('message.title')}
-            {selectedProject && (
-              <Badge variant="secondary" className="ml-auto">
-                {selectedProject}
-              </Badge>
-            )}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">{t('message.description')}</p>
+          <CardTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />{t('message.title')}{selectedProject && <Badge variant="secondary" className="ml-auto">{selectedProject}</Badge>}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t('message.descriptionV1')}</p>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {/* Target */}
-            <div className="space-y-3">
-              <Label>{t('message.target.title')} *</Label>
-              <RadioGroup
-                defaultValue="token"
-                value={targetType}
-                onValueChange={(value: TargetType) => setTargetType(value)}
-                className="flex space-x-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="token" id="token" />
-                  <Label htmlFor="token">{t('message.target.token')}</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="topic" id="topic" />
-                  <Label htmlFor="topic">{t('message.target.topic')}</Label>
-                </div>
-              </RadioGroup>
-              
-              {targetType === 'token' ? (
-                <div className="space-y-2">
-                  <InfoTooltip content={t('message.tooltips.deviceToken')}>
-                    <Label htmlFor="deviceToken">{t('message.deviceToken')} *</Label>
-                  </InfoTooltip>
-                  <Input
-                    id="deviceToken"
-                    placeholder={t('message.deviceTokenPlaceholder')}
-                    value={formData.target}
-                    onChange={(e) => setFormData(prev => ({ ...prev, target: e.target.value }))}
-                    className="font-mono text-sm"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <InfoTooltip content={t('message.tooltips.topic')}>
-                    <Label htmlFor="topicName">{t('message.topicName')} *</Label>
-                  </InfoTooltip>
-                  <Input
-                    id="topicName"
-                    placeholder={t('message.topicNamePlaceholder')}
-                    value={formData.target}
-                    onChange={(e) => setFormData(prev => ({ ...prev, target: e.target.value }))}
-                    className="font-mono text-sm"
-                  />
-                </div>
-              )}
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <Label>{t('message.target.title')} *</Label>
+            <RadioGroup value={targetType} onValueChange={(v) => setTargetType(v as any)} className="flex space-x-4">
+              <div className="flex items-center space-x-2"><RadioGroupItem value="token" id="token" /><Label htmlFor="token">{t('message.target.token')}</Label></div>
+              <div className="flex items-center space-x-2"><RadioGroupItem value="topic" id="topic" /><Label htmlFor="topic">{t('message.target.topic')}</Label></div>
+              <div className="flex items-center space-x-2"><RadioGroupItem value="condition" id="condition" /><Label htmlFor="condition">{t('message.target.condition')}</Label></div>
+            </RadioGroup>
+            <div className="space-y-2">
+                <Label htmlFor={targetType}>{t(`message.${targetType}`)} *</Label>
+              <Input id={targetType} placeholder={t(`message.${targetType}Placeholder`)} value={formData[targetType] || ''} onChange={(e) => handleFormChange(targetType, e.target.value)} className="font-mono text-sm" />
             </div>
-
-            <Tabs defaultValue="notification" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="notification">{t('message.tabs.notification')}</TabsTrigger>
-                <TabsTrigger value="data">{t('message.tabs.customData')}</TabsTrigger>
-                <TabsTrigger value="android">{t('message.tabs.android')}</TabsTrigger>
-                <TabsTrigger value="apns">{t('message.tabs.apns')}</TabsTrigger>
-                <TabsTrigger value="webpush">{t('message.tabs.webpush')}</TabsTrigger>
-              </TabsList>
-
-              {/* Notification Tab */}
-              <TabsContent value="notification" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.title')}>
-                      <Label htmlFor="title">{t('message.notification.title')} *</Label>
-                    </InfoTooltip>
-                    <Input
-                      id="title"
-                      placeholder="Push notification title"
-                      value={formData.notification.title}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        notification: { ...prev.notification, title: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.icon')}>
-                      <Label htmlFor="icon">{t('message.notification.icon')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      id="icon"
-                      placeholder="https://example.com/icon.png"
-                      value={formData.notification.icon}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        notification: { ...prev.notification, icon: e.target.value }
-                      }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <InfoTooltip content={t('message.tooltips.body')}>
-                    <Label htmlFor="body">{t('message.notification.body')} *</Label>
-                  </InfoTooltip>
-                  <Textarea
-                    id="body"
-                    placeholder="Your custom push message here"
-                    value={formData.notification.body}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      notification: { ...prev.notification, body: e.target.value }
-                    }))}
-                    className="min-h-20"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <InfoTooltip content={t('message.tooltips.clickAction')}>
-                    <Label htmlFor="clickAction">{t('message.notification.clickAction')}</Label>
-                  </InfoTooltip>
-                  <Input
-                    id="clickAction"
-                    placeholder="https://example.com or FLUTTER_NOTIFICATION_CLICK"
-                    value={formData.notification.click_action}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      notification: { ...prev.notification, click_action: e.target.value }
-                    }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <InfoTooltip content={t('message.tooltips.badge')}>
-                    <Label htmlFor="badge">{t('message.notification.badge')}</Label>
-                  </InfoTooltip>
-                  <Input
-                    id="badge"
-                    placeholder="https://example.com/badge.png"
-                    value={formData.notification.badge}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      notification: { ...prev.notification, badge: e.target.value }
-                    }))}
-                  />
-                </div>
-              </TabsContent>
-
-              {/* Custom Data Tab */}
-              <TabsContent value="data" className="space-y-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder={t('message.customData.key')}
-                      value={customDataKey}
-                      onChange={(e) => setCustomDataKey(e.target.value)}
-                    />
-                    <Input
-                      placeholder={t('message.customData.value')}
-                      value={customDataValue}
-                      onChange={(e) => setCustomDataValue(e.target.value)}
-                    />
-                  </div>
-                  <Button onClick={addCustomData} variant="outline" className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t('message.customData.add')}
-                  </Button>
-                  
-                  <div className="space-y-2">
-                    <Label>Current Custom Data:</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.customData.map((item, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
-                          onClick={() => removeCustomData(index)}
-                        >
-                          {item.key}: {item.value} <X className="h-3 w-3 ml-1" />
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* Android Specific Tab */}
-              <TabsContent value="android" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.androidSound')}>
-                      <Label>{t('message.android.sound')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="default"
-                      value={formData.android.sound}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        android: { ...prev.android, sound: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.androidColor')}>
-                      <Label>{t('message.android.color')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="#3B82F6"
-                      value={formData.android.color}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        android: { ...prev.android, color: e.target.value }
-                      }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.androidTag')}>
-                      <Label>{t('message.android.tag')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="notification_tag"
-                      value={formData.android.tag}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        android: { ...prev.android, tag: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.androidPriority')}>
-                      <Label>{t('message.android.priority')}</Label>
-                    </InfoTooltip>
-                    <Select
-                      value={formData.android.priority}
-                      onValueChange={(value) => setFormData(prev => ({
-                        ...prev,
-                        android: { ...prev.android, priority: value }
-                      }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="min">{t('message.android.priorities.min')}</SelectItem>
-                        <SelectItem value="low">{t('message.android.priorities.low')}</SelectItem>
-                        <SelectItem value="default">{t('message.android.priorities.default')}</SelectItem>
-                        <SelectItem value="high">{t('message.android.priorities.high')}</SelectItem>
-                        <SelectItem value="max">{t('message.android.priorities.max')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.androidChannelId')}>
-                      <Label>{t('message.android.channelId')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="channel_id"
-                      value={formData.android.channelId}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        android: { ...prev.android, channelId: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.androidTicker')}>
-                      <Label>{t('message.android.ticker')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="New message ticker"
-                      value={formData.android.ticker}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        android: { ...prev.android, ticker: e.target.value }
-                      }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.androidNotificationCount')}>
-                      <Label>{t('message.android.notificationCount')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      type="number"
-                      placeholder="10"
-                      value={formData.android.notificationCount}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        android: { ...prev.android, notificationCount: e.target.value }
-                      }))}
-                    />
-                  </div>
-
-                <div className="space-y-2">
-                  <InfoTooltip content={t('message.tooltips.androidImageUrl')}>
-                    <Label htmlFor="androidImageUrl">{t('message.android.imageUrl')}</Label>
-                  </InfoTooltip>
-                  <Input
-                    id="androidImageUrl"
-                    placeholder="https://foo.bar.pizza-monster.png"
-                    value={formData.android.imageUrl}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      android: { ...prev.android, imageUrl: e.target.value }
-                    }))}
-                  />
-                </div>
-              </TabsContent>
-
-              {/* APNS Tab */}
-              <TabsContent value="apns" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.apnsSound')}>
-                      <Label>{t('message.apns.sound')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="default"
-                      value={formData.apns.sound}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        apns: { ...prev.apns, sound: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.apnsBadge')}>
-                      <Label>{t('message.apns.badge')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      type="number"
-                      placeholder="1"
-                      value={formData.apns.badge}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        apns: { ...prev.apns, badge: e.target.value }
-                      }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.apnsCategory')}>
-                      <Label>{t('message.apns.category')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="MESSAGE_CATEGORY"
-                      value={formData.apns.category}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        apns: { ...prev.apns, category: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.apnsThreadId')}>
-                      <Label>{t('message.apns.threadId')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="thread-1"
-                      value={formData.apns.threadId}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        apns: { ...prev.apns, threadId: e.target.value }
-                      }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <InfoTooltip content={t('message.tooltips.apnsSubtitle')}>
-                        <Label>{t('message.apns.subtitle')}</Label>
-                        </InfoTooltip>
-                        <Input
-                        placeholder="Notification subtitle"
-                        value={formData.apns.subtitle}
-                        onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            apns: { ...prev.apns, subtitle: e.target.value }
-                        }))}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <InfoTooltip content={t('message.tooltips.apnsInterruptionLevel')}>
-                        <Label>{t('message.apns.interruptionLevel')}</Label>
-                        </InfoTooltip>
-                        <Select
-                        value={formData.apns.interruptionLevel}
-                        onValueChange={(value) => setFormData(prev => ({
-                            ...prev,
-                            apns: { ...prev.apns, interruptionLevel: value }
-                        }))}
-                        >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select interruption level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="passive">{t('message.apns.interruptionLevels.passive')}</SelectItem>
-                            <SelectItem value="active">{t('message.apns.interruptionLevels.active')}</SelectItem>
-                            <SelectItem value="time-sensitive">{t('message.apns.interruptionLevels.time-sensitive')}</SelectItem>
-                        </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="contentAvailable"
-                      checked={formData.apns.contentAvailable}
-                      onCheckedChange={(checked) => setFormData(prev => ({
-                        ...prev,
-                        apns: { ...prev.apns, contentAvailable: checked }
-                      }))}
-                    />
-                    <InfoTooltip content={t('message.tooltips.apnsContentAvailable')}>
-                      <Label htmlFor="contentAvailable">{t('message.apns.contentAvailable')}</Label>
-                    </InfoTooltip>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="mutableContent"
-                      checked={formData.apns.mutableContent}
-                      onCheckedChange={(checked) => setFormData(prev => ({
-                        ...prev,
-                        apns: { ...prev.apns, mutableContent: checked }
-                      }))}
-                    />
-                    <InfoTooltip content={t('message.tooltips.apnsMutableContent')}>
-                      <Label htmlFor="mutableContent">{t('message.apns.mutableContent')}</Label>
-                    </InfoTooltip>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <InfoTooltip content={t('message.tooltips.apnsFCMOptionsImage')}>
-                    <Label htmlFor="apnsFCMOptionsImage">{t('message.apns.fcmOptionsImage')}</Label>
-                  </InfoTooltip>
-                  <Input
-                    id="apnsFCMOptionsImage"
-                    placeholder="https://foo.bar.pizza-monster.png"
-                    value={formData.apns.fcmOptionsImage}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      apns: { ...prev.apns, fcmOptionsImage: e.target.value }
-                    }))}
-                  />
-                </div>
-              </TabsContent>
-
-              {/* Web Push Tab */}
-              <TabsContent value="webpush" className="space-y-4">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="requireInteraction"
-                      checked={formData.webpush.requireInteraction}
-                      onCheckedChange={(checked) => setFormData(prev => ({
-                        ...prev,
-                        webpush: { ...prev.webpush, requireInteraction: checked }
-                      }))}
-                    />
-                    <InfoTooltip content={t('message.tooltips.webpushRequireInteraction')}>
-                      <Label htmlFor="requireInteraction">{t('message.webpush.requireInteraction')}</Label>
-                    </InfoTooltip>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <InfoTooltip content={t('message.tooltips.webpushVibrate')}>
-                      <Label>{t('message.webpush.vibrate')}</Label>
-                    </InfoTooltip>
-                    <Input
-                      placeholder="200,100,200"
-                      value={formData.webpush.vibrate}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        webpush: { ...prev.webpush, vibrate: e.target.value }
-                      }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <InfoTooltip content={t('message.tooltips.webpushHeadersImage')}>
-                    <Label htmlFor="webpushHeadersImage">{t('message.webpush.headersImage')}</Label>
-                  </InfoTooltip>
-                  <Input
-                    id="webpushHeadersImage"
-                    placeholder="https://foo.bar.pizza-monster.png"
-                    value={formData.webpush.headersImage}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      webpush: { ...prev.webpush, headersImage: e.target.value }
-                    }))}
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            {/* JSON Preview */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">{t('message.jsonPreview.sent')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-40">
-                    {JSON.stringify(finalMessage, null, 2)}
-                  </pre>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">{t('message.jsonPreview.received')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-40">
-                    {receivedJson ? JSON.stringify(receivedJson, null, 2) : "No response yet..."}
-                  </pre>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Button 
-              onClick={handleSendMessage}
-              disabled={!selectedProject || !formData.target.trim() || isSending}
-              className="w-full"
-              size="lg"
-            >
-              {isSending ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                  {t('message.sending')}
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  {t('message.send')}
-                </>
-              )}
-            </Button>
           </div>
+
+          <Tabs defaultValue="general" className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="general">{t('message.tabs.general')}</TabsTrigger>
+              <TabsTrigger value="data">{t('message.tabs.data')}</TabsTrigger>
+              <TabsTrigger value="android">{t('message.tabs.android')}</TabsTrigger>
+              <TabsTrigger value="apns">{t('message.tabs.apns')}</TabsTrigger>
+              <TabsTrigger value="webpush">{t('message.tabs.webpush')}</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="general" className="space-y-4 pt-4">
+                <Card>
+                    <CardHeader><CardTitle>{t('message.notification.title')}</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.notificationTitle"><Label>{t('message.notification.title')}</Label></InfoTooltip><Input placeholder="Notification title" value={formData.notification?.title || ''} onChange={e => handleFormChange('notification.title', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.notificationBody"><Label>{t('message.notification.body')}</Label></InfoTooltip><Textarea placeholder="Notification body" value={formData.notification?.body || ''} onChange={e => handleFormChange('notification.body', e.target.value)} /></div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>{t('message.fcm_options.title')}</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.analyticsLabel"><Label>{t('message.fcm_options.analytics_label')}</Label></InfoTooltip><Input placeholder="your_analytics_label" value={formData.fcm_options?.analytics_label || ''} onChange={e => handleFormChange('fcm_options.analytics_label', e.target.value)} /></div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="data" className="space-y-4 pt-4">
+              <div className="grid grid-cols-2 gap-2"><Input id="customDataKey" placeholder={t('message.customData.key')} /><Input id="customDataValue" placeholder={t('message.customData.value')} /></div>
+              <Button onClick={addCustomData} variant="outline" className="w-full"><Plus className="h-4 w-4 mr-2" />{t('message.customData.add')}</Button>
+              <div className="space-y-2">{customData.length > 0 && <Label>Current Custom Data:</Label>}<div className="flex flex-wrap gap-2">{customData.map((item, index) => (<Badge key={index} variant="secondary" className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground" onClick={() => removeCustomData(index)}>{item.key}: {item.value} <X className="h-3 w-3 ml-1" /></Badge>))}</div></div>
+            </TabsContent>
+
+            <TabsContent value="android" className="space-y-4 pt-4">
+                <Card>
+                    <CardHeader><CardTitle>{t('message.android.config.title')}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.ttl"><Label>{t('message.android.config.ttl')}</Label></InfoTooltip><Input placeholder="3600s" value={formData.android?.ttl || ''} onChange={e => handleFormChange('android.ttl', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.priority"><Label>{t('message.android.config.priority')}</Label></InfoTooltip><Select value={formData.android?.priority} onValueChange={v => handleFormChange('android.priority', v)}><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger><SelectContent><SelectItem value="NORMAL">NORMAL</SelectItem><SelectItem value="HIGH">HIGH</SelectItem></SelectContent></Select></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.collapse_key"><Label>{t('message.android.config.collapse_key')}</Label></InfoTooltip><Input placeholder="my_collapse_key" value={formData.android?.collapse_key || ''} onChange={e => handleFormChange('android.collapse_key', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.restricted_package_name"><Label>{t('message.android.config.restricted_package_name')}</Label></InfoTooltip><Input placeholder="com.example.app" value={formData.android?.restricted_package_name || ''} onChange={e => handleFormChange('android.restricted_package_name', e.target.value)} /></div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>{t('message.android.notification.title')}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.title"><Label>{t('message.android.notification.titleLabel')}</Label></InfoTooltip><Input value={formData.android?.notification?.title || ''} onChange={e => handleFormChange('android.notification.title', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.body"><Label>{t('message.android.notification.body')}</Label></InfoTooltip><Input value={formData.android?.notification?.body || ''} onChange={e => handleFormChange('android.notification.body', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.icon"><Label>{t('message.android.notification.icon')}</Label></InfoTooltip><Input value={formData.android?.notification?.icon || ''} onChange={e => handleFormChange('android.notification.icon', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.color"><Label>{t('message.android.notification.color')}</Label></InfoTooltip><Input value={formData.android?.notification?.color || ''} onChange={e => handleFormChange('android.notification.color', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.sound"><Label>{t('message.android.notification.sound')}</Label></InfoTooltip><Input value={formData.android?.notification?.sound || ''} onChange={e => handleFormChange('android.notification.sound', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.tag"><Label>{t('message.android.notification.tag')}</Label></InfoTooltip><Input value={formData.android?.notification?.tag || ''} onChange={e => handleFormChange('android.notification.tag', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.click_action"><Label>{t('message.android.notification.click_action')}</Label></InfoTooltip><Input value={formData.android?.notification?.click_action || ''} onChange={e => handleFormChange('android.notification.click_action', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.channel_id"><Label>{t('message.android.notification.channel_id')}</Label></InfoTooltip><Input value={formData.android?.notification?.channel_id || ''} onChange={e => handleFormChange('android.notification.channel_id', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.ticker"><Label>{t('message.android.notification.ticker')}</Label></InfoTooltip><Input value={formData.android?.notification?.ticker || ''} onChange={e => handleFormChange('android.notification.ticker', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.image"><Label>{t('message.android.notification.image')}</Label></InfoTooltip><Input value={formData.android?.notification?.image || ''} onChange={e => handleFormChange('android.notification.image', e.target.value)} /></div>
+                        <div className="flex items-center space-x-2"><Switch checked={formData.android?.notification?.sticky} onCheckedChange={v => handleFormChange('android.notification.sticky', v)} /><InfoTooltip contentKey="message.tooltips.android.notification.sticky"><Label>{t('message.android.notification.sticky')}</Label></InfoTooltip></div>
+                        <div className="flex items-center space-x-2"><Switch checked={formData.android?.notification?.local_only} onCheckedChange={v => handleFormChange('android.notification.local_only', v)} /><InfoTooltip contentKey="message.tooltips.android.notification.local_only"><Label>{t('message.android.notification.local_only')}</Label></InfoTooltip></div>
+                        <div className="flex items-center space-x-2"><Switch checked={formData.android?.notification?.default_sound} onCheckedChange={v => handleFormChange('android.notification.default_sound', v)} /><InfoTooltip contentKey="message.tooltips.android.notification.default_sound"><Label>{t('message.android.notification.default_sound')}</Label></InfoTooltip></div>
+                        <div className="flex items-center space-x-2"><Switch checked={formData.android?.notification?.default_vibrate_timings} onCheckedChange={v => handleFormChange('android.notification.default_vibrate_timings', v)} /><InfoTooltip contentKey="message.tooltips.android.notification.default_vibrate_timings"><Label>{t('message.android.notification.default_vibrate_timings')}</Label></InfoTooltip></div>
+                        <div className="flex items-center space-x-2"><Switch checked={formData.android?.notification?.default_light_settings} onCheckedChange={v => handleFormChange('android.notification.default_light_settings', v)} /><InfoTooltip contentKey="message.tooltips.android.notification.default_light_settings"><Label>{t('message.android.notification.default_light_settings')}</Label></InfoTooltip></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.visibility"><Label>{t('message.android.notification.visibility')}</Label></InfoTooltip><Select value={formData.android?.notification?.visibility} onValueChange={v => handleFormChange('android.notification.visibility', v)}><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger><SelectContent><SelectItem value="PRIVATE">PRIVATE</SelectItem><SelectItem value="PUBLIC">PUBLIC</SelectItem><SelectItem value="SECRET">SECRET</SelectItem></SelectContent></Select></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.notification_priority"><Label>{t('message.android.notification.priority')}</Label></InfoTooltip><Select value={formData.android?.notification?.notification_priority} onValueChange={v => handleFormChange('android.notification.notification_priority', v)}><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger><SelectContent><SelectItem value="PRIORITY_MIN">MIN</SelectItem><SelectItem value="PRIORITY_LOW">LOW</SelectItem><SelectItem value="PRIORITY_DEFAULT">DEFAULT</SelectItem><SelectItem value="PRIORITY_HIGH">HIGH</SelectItem><SelectItem value="PRIORITY_MAX">MAX</SelectItem></SelectContent></Select></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.android.notification.importance"><Label>{t('message.android.notification.importance')}</Label></InfoTooltip><Select value={formData.android?.notification?.importance} onValueChange={v => handleFormChange('android.notification.importance', v)}><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger><SelectContent><SelectItem value="IMPORTANCE_MIN">MIN</SelectItem><SelectItem value="IMPORTANCE_LOW">LOW</SelectItem><SelectItem value="IMPORTANCE_DEFAULT">DEFAULT</SelectItem><SelectItem value="IMPORTANCE_HIGH">HIGH</SelectItem></SelectContent></Select></div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="apns" className="space-y-4 pt-4">
+                <Card>
+                    <CardHeader><CardTitle>{t('message.apns.payload.title')}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.apns.alert.title"><Label>{t('message.apns.payload.alert_title')}</Label></InfoTooltip><Input value={formData.apns?.payload?.aps?.alert?.title || ''} onChange={e => handleFormChange('apns.payload.aps.alert.title', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.apns.alert.body"><Label>{t('message.apns.payload.alert_body')}</Label></InfoTooltip><Input value={formData.apns?.payload?.aps?.alert?.body || ''} onChange={e => handleFormChange('apns.payload.aps.alert.body', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.apns.badge"><Label>{t('message.apns.payload.badge')}</Label></InfoTooltip><Input type="number" value={formData.apns?.payload?.aps?.badge || ''} onChange={e => handleFormChange('apns.payload.aps.badge', parseInt(e.target.value))} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.apns.sound"><Label>{t('message.apns.payload.sound')}</Label></InfoTooltip><Input value={formData.apns?.payload?.aps?.sound || ''} onChange={e => handleFormChange('apns.payload.aps.sound', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.apns.category"><Label>{t('message.apns.payload.category')}</Label></InfoTooltip><Input value={formData.apns?.payload?.aps?.category || ''} onChange={e => handleFormChange('apns.payload.aps.category', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.apns.thread_id"><Label>{t('message.apns.payload.thread_id')}</Label></InfoTooltip><Input value={formData.apns?.payload?.aps?.thread_id || ''} onChange={e => handleFormChange('apns.payload.aps.thread_id', e.target.value)} /></div>
+                        <div className="flex items-center space-x-2"><Switch checked={formData.apns?.payload?.aps?.content_available} onCheckedChange={v => handleFormChange('apns.payload.aps.content_available', v)} /><InfoTooltip contentKey="message.tooltips.apns.content_available"><Label>{t('message.apns.payload.content_available')}</Label></InfoTooltip></div>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader><CardTitle>{t('message.apns.fcm_options.title')}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.apns.fcm_options.analytics_label"><Label>{t('message.apns.fcm_options.analytics_label')}</Label></InfoTooltip><Input value={formData.apns?.fcm_options?.analytics_label || ''} onChange={e => handleFormChange('apns.fcm_options.analytics_label', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.apns.fcm_options.image"><Label>{t('message.apns.fcm_options.image')}</Label></InfoTooltip><Input value={formData.apns?.fcm_options?.image || ''} onChange={e => handleFormChange('apns.fcm_options.image', e.target.value)} /></div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            
+            <TabsContent value="webpush" className="space-y-4 pt-4">
+                <Card>
+                    <CardHeader><CardTitle>{t('message.webpush.notification.title')}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.webpush.notification.title"><Label>{t('message.webpush.notification.titleLabel')}</Label></InfoTooltip><Input value={formData.webpush?.notification?.title || ''} onChange={e => handleFormChange('webpush.notification.title', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.webpush.notification.body"><Label>{t('message.webpush.notification.body')}</Label></InfoTooltip><Input value={formData.webpush?.notification?.body || ''} onChange={e => handleFormChange('webpush.notification.body', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.webpush.notification.icon"><Label>{t('message.webpush.notification.icon')}</Label></InfoTooltip><Input value={formData.webpush?.notification?.icon || ''} onChange={e => handleFormChange('webpush.notification.icon', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.webpush.notification.image"><Label>{t('message.webpush.notification.image')}</Label></InfoTooltip><Input value={formData.webpush?.notification?.image || ''} onChange={e => handleFormChange('webpush.notification.image', e.target.value)} /></div>
+                        <div className="space-y-2"><InfoTooltip contentKey="message.tooltips.webpush.notification.tag"><Label>{t('message.webpush.notification.tag')}</Label></InfoTooltip><Input value={formData.webpush?.notification?.tag || ''} onChange={e => handleFormChange('webpush.notification.tag', e.target.value)} /></div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>{t('message.webActions.title')}</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-3 gap-2 items-end">
+                            <Input id="webActionAction" placeholder={t('message.webActions.actionPlaceholder')} />
+                            <Input id="webActionTitle" placeholder={t('message.webActions.titlePlaceholder')} />
+                            <Input id="webActionIcon" placeholder={t('message.webActions.iconPlaceholder')} />
+                        </div>
+                        <Button onClick={addWebAction} variant="outline" className="w-full"><Plus className="h-4 w-4 mr-2" />{t('message.webActions.add')}</Button>
+                        <div className="space-y-2">
+                            {webActions.map((action, index) => (
+                                <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                                    <div className="flex-grow grid grid-cols-3 gap-2">
+                                        <p className="text-sm truncate"><b>{t('message.webActions.action')}:</b> {action.action}</p>
+                                        <p className="text-sm truncate"><b>{t('message.webActions.titleLabel')}:</b> {action.title}</p>
+                                        <p className="text-sm truncate"><b>{t('message.webActions.icon')}:</b> {action.icon}</p>
+                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={() => removeWebAction(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+          </Tabs>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">{t('message.jsonPreview.sent')}</CardTitle></CardHeader>
+              <CardContent><pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-96 font-mono">{JSON.stringify(finalMessage, null, 2)}</pre></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">{t('message.jsonPreview.received')}</CardTitle></CardHeader>
+              <CardContent><pre className="text-xs bg-muted p-3 rounded-md overflow-auto max-h-96 font-mono">{receivedJson ? JSON.stringify(receivedJson, null, 2) : "No response yet..."}</pre></CardContent>
+            </Card>
+          </div>
+
+          <Button onClick={handleSendMessage} disabled={!selectedProject || (formData[targetType] || '').trim() === '' || isSending} className="w-full" size="lg">
+            {isSending ? (<><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />{t('message.sending')}</>) : (<><Send className="h-4 w-4 mr-2" />{t('message.send')}</>)}
+          </Button>
         </CardContent>
       </Card>
     </TooltipProvider>

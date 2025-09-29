@@ -15,7 +15,7 @@ export const sendMessage = async (projectId: string, message: Record<string, any
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ projectId, message }),
+    body: JSON.stringify({ projectId, message: message.message }),
   });
 
   let result;

@@ -69,7 +69,7 @@ app.get('/api/projects', async (req, res) => {
  */
 app.post('/api/send', async (req, res) => {
   const { projectId, message } = req.body;
- console.log(req.body);
+  console.log(req.body);
   if (!projectId || !message) {
     return res.status(400).json({ error: 'projectId and message are required.' });
   }
@@ -78,11 +78,14 @@ app.post('/api/send', async (req, res) => {
     if (!firebaseApp) {
       throw new Error('Firebase app could not be initialized.');
     }
-    if (!message.token && !message.topic && !message.condition) {
-    return res.status(400).json({
-      error: "Message must contain exactly one of: token, topic, or condition"
-    });
-  }
+
+    const propertyCount = Number(!!message.token) + Number(!!message.topic) + Number(!!message.condition);
+
+    if (propertyCount !== 1) {
+      return res.status(400).json({
+        error: "Message must contain exactly one of: token, topic, or condition"
+      });
+    }
 
     const response = await firebaseApp.messaging().send(message);
     console.log('Successfully sent message:', response);
@@ -127,7 +130,7 @@ app.delete('/api/certificates/:projectId', async (req, res) => {
 
   try {
     await unlink(filePath);
-    
+
     // Also remove from the initialized apps cache if it exists
     if (firebaseApps.has(projectId)) {
       const app = firebaseApps.get(projectId);
@@ -137,7 +140,7 @@ app.delete('/api/certificates/:projectId', async (req, res) => {
         console.log(`Unloaded Firebase app for project: ${projectId}`);
       }
     }
-    
+
     console.log(`Certificate for project ${projectId} deleted.`);
     res.json({ success: true, projectId });
   } catch (error: any) {
